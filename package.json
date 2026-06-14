@@ -1,0 +1,19 @@
+{
+  "name": "agpe",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "pnpm --filter kermesse build",
+    "typecheck": "pnpm --filter kermesse typecheck",
+    "deploy:build": "pnpm --filter kermesse build"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  },
+  "packageManager": "pnpm@9.15.9",
+  "workspaces": [
+    "apps/*",
+    "shared"
+  ]
+}
