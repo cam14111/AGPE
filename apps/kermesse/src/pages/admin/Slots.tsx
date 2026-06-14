@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { Pencil, Plus, Trash2, X } from 'lucide-react'
 import { useActiveEvent } from '@/hooks/useActiveEvent'
 import { useStands } from '@/hooks/useStands'
 import { useFillRates } from '@/hooks/useFillRates'
 import { useSlotMutations } from '@/hooks/useSlotMutations'
+import { useAdminSignups, type AdminSignupDetail } from '@/hooks/useAdminSignups'
 import { SlotForm } from '@/components/admin/SlotForm'
 import { SlotBadge } from '@/components/volunteer/SlotBadge'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
@@ -21,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { formatTime } from '@/lib/date-utils'
+import { participantLabel } from '@/lib/participant'
 import type { SlotRow } from '@/lib/domain'
 
 export function Slots() {
@@ -28,6 +30,7 @@ export function Slots() {
   const eventId = event?.id ?? null
   const { stands, loading, error, refetch } = useStands(eventId)
   const { fillRates, refetch: refetchFillRates } = useFillRates()
+  const { details, removeSignup } = useAdminSignups(eventId)
   const { createSlot, updateSlot, deleteSlot } = useSlotMutations(() => {
     refetch()
     refetchFillRates()
@@ -37,6 +40,18 @@ export function Slots() {
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<SlotRow | null>(null)
   const [toDelete, setToDelete] = useState<SlotRow | null>(null)
+  const [toRemove, setToRemove] = useState<AdminSignupDetail | null>(null)
+
+  // Inscrits regroupés par créneau.
+  const participantsBySlot = useMemo(() => {
+    const map = new Map<string, AdminSignupDetail[]>()
+    for (const d of details) {
+      const list = map.get(d.slot_id) ?? []
+      list.push(d)
+      map.set(d.slot_id, list)
+    }
+    return map
+  }, [details])
 
   // Sélectionne le premier stand par défaut une fois la liste chargée.
   useEffect(() => {
@@ -136,39 +151,63 @@ export function Slots() {
                   selectedStand.kermesse_slots.map((slot) => {
                     const fill = fillRates[slot.id]
                     const current = fill?.currentCount ?? 0
+                    const participants = participantsBySlot.get(slot.id) ?? []
                     return (
                       <div
                         key={slot.id}
-                        className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-white p-3"
+                        className="space-y-2 rounded-md border bg-white p-3"
                       >
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-medium text-slate-800">
-                            {formatTime(slot.start_time)} →{' '}
-                            {formatTime(slot.end_time)}
-                          </span>
-                          <SlotBadge current={current} max={slot.max_volunteers} />
-                          <span className="text-xs text-slate-400">
-                            {current} / {slot.max_volunteers}
-                          </span>
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm font-medium text-slate-800">
+                              {formatTime(slot.start_time)} →{' '}
+                              {formatTime(slot.end_time)}
+                            </span>
+                            <SlotBadge current={current} max={slot.max_volunteers} />
+                            <span className="text-xs text-slate-400">
+                              {current} / {slot.max_volunteers}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openEdit(slot)}
+                              aria-label="Modifier le créneau"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setToDelete(slot)}
+                              aria-label="Supprimer le créneau"
+                            >
+                              <Trash2 className="h-4 w-4 text-red-600" />
+                            </Button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openEdit(slot)}
-                            aria-label="Modifier le créneau"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setToDelete(slot)}
-                            aria-label="Supprimer le créneau"
-                          >
-                            <Trash2 className="h-4 w-4 text-red-600" />
-                          </Button>
-                        </div>
+
+                        {participants.length > 0 && (
+                          <div className="flex flex-wrap gap-1 border-t pt-2">
+                            {participants.map((p) => (
+                              <span
+                                key={p.signup_id}
+                                className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700"
+                              >
+                                {participantLabel(p)}
+                                <button
+                                  type="button"
+                                  onClick={() => setToRemove(p)}
+                                  aria-label={`Désinscrire ${participantLabel(p)}`}
+                                  className="rounded-full p-0.5 text-slate-400 hover:bg-red-100 hover:text-red-600"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )
                   })
@@ -202,6 +241,27 @@ export function Slots() {
         }}
         onOpenChange={(open) => {
           if (!open) setToDelete(null)
+        }}
+      />
+
+      <ConfirmDialog
+        open={toRemove !== null}
+        title="Désinscrire ce bénévole ?"
+        description={
+          toRemove
+            ? `${participantLabel(toRemove)} sera retiré de ce créneau. La place se libérera pour un autre bénévole.`
+            : undefined
+        }
+        confirmLabel="Désinscrire"
+        destructive
+        onConfirm={async () => {
+          if (toRemove) {
+            const ok = await removeSignup(toRemove.signup_id)
+            if (ok) refetchFillRates()
+          }
+        }}
+        onOpenChange={(open) => {
+          if (!open) setToRemove(null)
         }}
       />
     </div>

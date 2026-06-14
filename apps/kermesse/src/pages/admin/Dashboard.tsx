@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/table'
 import { Card, CardContent } from '@/components/ui/card'
 import { formatTime } from '@/lib/date-utils'
+import { participantLabel } from '@/lib/participant'
 import type { AdminSignupDetail } from '@/hooks/useAdminSignups'
 
 interface SlotSummary {
@@ -33,11 +34,6 @@ interface SlotSummary {
   current: number
   remaining: number
   participants: AdminSignupDetail[]
-}
-
-function participantLabel(d: AdminSignupDetail): string {
-  const name = [d.first_name, d.last_name].filter(Boolean).join(' ').trim()
-  return name || d.email || 'Bénévole'
 }
 
 export function Dashboard() {
