@@ -234,6 +234,20 @@ export interface Database {
         Args: Record<string, never>
         Returns: string
       }
+      kermesse_admin_list_members: {
+        Args: Record<string, never>
+        Returns: {
+          user_id: string
+          email: string | null
+          first_name: string | null
+          last_name: string | null
+          role: 'admin' | 'volunteer' | null
+        }[]
+      }
+      kermesse_admin_set_role: {
+        Args: { p_user_id: string; p_role: 'admin' | 'volunteer' }
+        Returns: undefined
+      }
       kermesse_admin_signup_details: {
         Args: { p_event_id: string }
         Returns: {

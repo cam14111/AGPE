@@ -105,6 +105,8 @@ pnpm supabase gen types typescript --project-id <project-id> \
 | `kermesse_bootstrap_admin()` (RPC) | Promeut le premier admin (idempotent) |
 | `kermesse_ensure_volunteer_role()` (RPC) | Attribue le rôle bénévole au nouvel utilisateur |
 | `kermesse_admin_signup_details()` (RPC) | Détail des inscriptions (email + nom) — admins uniquement |
+| `kermesse_admin_list_members()` (RPC) | Liste des membres + rôle — admins uniquement |
+| `kermesse_admin_set_role()` (RPC) | Promotion/rétrogradation, garde « au moins 1 admin » — admins uniquement |
 
 ---
 

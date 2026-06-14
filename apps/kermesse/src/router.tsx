@@ -11,6 +11,7 @@ import { Dashboard } from '@/pages/admin/Dashboard'
 import { Events } from '@/pages/admin/Events'
 import { Stands } from '@/pages/admin/Stands'
 import { Slots } from '@/pages/admin/Slots'
+import { Roles } from '@/pages/admin/Roles'
 import { StandsList } from '@/pages/volunteer/StandsList'
 import { MyPlanning } from '@/pages/volunteer/MyPlanning'
 
@@ -101,6 +102,7 @@ export function AppRoutes() {
         <Route path="events" element={<Events />} />
         <Route path="stands" element={<Stands />} />
         <Route path="slots" element={<Slots />} />
+        <Route path="roles" element={<Roles />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
