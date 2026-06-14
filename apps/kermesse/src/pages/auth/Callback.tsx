@@ -4,6 +4,7 @@ import { supabase } from '@agpe/shared/supabase-client'
 import { useAuth } from '@agpe/shared/auth/useAuth'
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton'
 import { ErrorMessage } from '@/components/shared/ErrorMessage'
+import { syncProfileFromIdentity } from '@/lib/profile-sync'
 
 // Récupère la session après le clic sur le magic link, promeut l'admin si besoin,
 // garantit un rôle bénévole, puis redirige selon le rôle.
@@ -41,6 +42,9 @@ export function Callback() {
         )
         return
       }
+
+      // Renseigne le profil (prénom/nom) depuis l'identité Google si disponible.
+      await syncProfileFromIdentity(session.user)
 
       // Promotion du premier admin (idempotent, sans effet si un admin existe).
       const { error: bootstrapErr } = await supabase.rpc(
