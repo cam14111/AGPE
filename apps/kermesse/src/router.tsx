@@ -34,6 +34,13 @@ function RootRedirect() {
   )
 }
 
+// Choisit le layout selon le rôle (utilisé pour /profil, accessible aux deux rôles)
+// afin qu'un admin conserve sa navigation admin et un bénévole la sienne.
+function RoleLayout() {
+  const { role } = useAuth()
+  return role === 'admin' ? <AdminLayout /> : <VolunteerLayout />
+}
+
 // Empêche un utilisateur déjà connecté de revoir /login.
 function LoginRoute() {
   const { session, role, loading } = useAuth()
@@ -67,7 +74,7 @@ export function AppRoutes() {
         path="/profil"
         element={
           <RoleGuard requiredRole="volunteer">
-            <VolunteerLayout />
+            <RoleLayout />
           </RoleGuard>
         }
       >

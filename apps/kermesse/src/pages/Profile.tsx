@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { ArrowLeft } from 'lucide-react'
 import { useAuth } from '@agpe/shared/auth/useAuth'
 import { useProfile, type ProfileInput } from '@/hooks/useProfile'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,8 +18,10 @@ const EMPTY_FORM: ProfileInput = {
 }
 
 export function Profile() {
-  const { user } = useAuth()
+  const { user, role } = useAuth()
+  const navigate = useNavigate()
   const { profile, loading, saveProfile } = useProfile()
+  const homePath = role === 'admin' ? '/admin/dashboard' : '/volunteer/stands'
   const [form, setForm] = useState<ProfileInput>(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
 
@@ -53,6 +57,12 @@ export function Profile() {
       <PageHeader
         title="Mon profil"
         description="Optionnel — aide les organisateurs à vous reconnaître."
+        action={
+          <Button variant="outline" onClick={() => navigate(homePath)}>
+            <ArrowLeft className="h-4 w-4" />
+            Retour
+          </Button>
+        }
       />
 
       <Card className="max-w-lg">
