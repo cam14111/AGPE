@@ -1,0 +1,16 @@
+{
+  "name": "agpe",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Monorepo AGPE — applications de l'Association de Gestion des Parents d'Élèves",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "pnpm --filter kermesse dev",
+    "build": "pnpm --filter kermesse build",
+    "lint": "pnpm --filter kermesse lint",
+    "typecheck": "pnpm -r typecheck"
+  }
+}

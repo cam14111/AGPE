@@ -1,0 +1,23 @@
+{
+  "name": "@agpe/shared",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./index.ts",
+    "./supabase-client": "./supabase-client.ts",
+    "./auth/useAuth": "./auth/useAuth.ts",
+    "./auth/AuthProvider": "./auth/AuthProvider.tsx",
+    "./types/supabase": "./types/supabase.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0"
+  },
+  "peerDependencies": {
+    "react": "^18.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "react": "^18.3.1"
+  }
+}
