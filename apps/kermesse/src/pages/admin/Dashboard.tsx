@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertTriangle, CheckCircle2, Tent, Users } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Tent, Users, X } from 'lucide-react'
 import { useActiveEvent } from '@/hooks/useActiveEvent'
 import { useStands } from '@/hooks/useStands'
 import { useFillRates } from '@/hooks/useFillRates'
@@ -10,6 +10,7 @@ import { CsvExportButton } from '@/components/admin/CsvExportButton'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton'
 import { ErrorMessage } from '@/components/shared/ErrorMessage'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { SlotBadge } from '@/components/volunteer/SlotBadge'
 import {
   Table,
@@ -44,8 +45,9 @@ export function Dashboard() {
   const eventId = event?.id ?? null
   const { stands, loading: standsLoading, error: standsError, refetch } =
     useStands(eventId)
-  const { fillRates } = useFillRates()
-  const { details, error: detailsError } = useAdminSignups(eventId)
+  const { fillRates, refetch: refetchFillRates } = useFillRates()
+  const { details, error: detailsError, removeSignup } = useAdminSignups(eventId)
+  const [toRemove, setToRemove] = useState<AdminSignupDetail | null>(null)
 
   const summaries = useMemo<SlotSummary[]>(() => {
     const detailsBySlot = new Map<string, AdminSignupDetail[]>()
@@ -192,9 +194,24 @@ export function Dashboard() {
                           {s.participants.length === 0 ? (
                             <span className="text-slate-400">—</span>
                           ) : (
-                            <span className="text-slate-700">
-                              {s.participants.map(participantLabel).join(', ')}
-                            </span>
+                            <div className="flex flex-wrap gap-1">
+                              {s.participants.map((p) => (
+                                <span
+                                  key={p.signup_id}
+                                  className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700"
+                                >
+                                  {participantLabel(p)}
+                                  <button
+                                    type="button"
+                                    onClick={() => setToRemove(p)}
+                                    aria-label={`Désinscrire ${participantLabel(p)}`}
+                                    className="rounded-full p-0.5 text-slate-400 hover:bg-red-100 hover:text-red-600"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
                           )}
                         </TableCell>
                         <TableCell className="text-right">
@@ -214,6 +231,27 @@ export function Dashboard() {
           </Card>
         </>
       )}
+
+      <ConfirmDialog
+        open={toRemove !== null}
+        title="Désinscrire ce bénévole ?"
+        description={
+          toRemove
+            ? `${participantLabel(toRemove)} sera retiré de ce créneau. La place se libérera pour un autre bénévole.`
+            : undefined
+        }
+        confirmLabel="Désinscrire"
+        destructive
+        onConfirm={async () => {
+          if (toRemove) {
+            const ok = await removeSignup(toRemove.signup_id)
+            if (ok) refetchFillRates()
+          }
+        }}
+        onOpenChange={(open) => {
+          if (!open) setToRemove(null)
+        }}
+      />
     </div>
   )
 }

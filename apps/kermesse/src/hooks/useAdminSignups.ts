@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { supabase } from '@agpe/shared/supabase-client'
 
 // Détail d'une inscription tel que renvoyé par la RPC admin.
@@ -21,6 +22,7 @@ interface UseAdminSignupsResult {
   loading: boolean
   error: string | null
   refetch: () => void
+  removeSignup: (signupId: string) => Promise<boolean>
 }
 
 // Détail complet des inscriptions (email + nom + stand + créneau) via RPC admin.
@@ -54,5 +56,24 @@ export function useAdminSignups(eventId: string | null): UseAdminSignupsResult {
     void fetchDetails()
   }, [fetchDetails])
 
-  return { details, loading, error, refetch: fetchDetails }
+  // Désinscrit un bénévole d'un créneau (la RLS autorise l'admin à supprimer).
+  const removeSignup = useCallback(
+    async (signupId: string): Promise<boolean> => {
+      const { error: err } = await supabase
+        .from('kermesse_signups')
+        .delete()
+        .eq('id', signupId)
+      if (err) {
+        toast.error('Impossible de désinscrire ce bénévole.')
+        console.error('[kermesse] removeSignup error:', err)
+        return false
+      }
+      toast.success('Bénévole désinscrit.')
+      await fetchDetails()
+      return true
+    },
+    [fetchDetails],
+  )
+
+  return { details, loading, error, refetch: fetchDetails, removeSignup }
 }
