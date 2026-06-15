@@ -40,7 +40,8 @@ export function DayTimeline({
     }
     const span = Math.max(max - min, 60)
     const tickList: number[] = []
-    for (let h = Math.floor(min / 60); h <= Math.ceil(max / 60); h++) {
+    // Ticks horaires strictement dans [min, max] pour éviter tout débordement.
+    for (let h = Math.ceil(min / 60); h <= Math.floor(max / 60); h++) {
       tickList.push(h * 60)
     }
     return { axisStart: min, axisSpan: span, ticks: tickList }
@@ -70,15 +71,25 @@ export function DayTimeline({
 
       {/* Axe horaire */}
       <div className="relative ml-[5.5rem] h-4 text-[10px] text-slate-400">
-        {ticks.map((t) => (
-          <span
-            key={t}
-            className="absolute -translate-x-1/2"
-            style={{ left: `${pct(t)}%` }}
-          >
-            {String(Math.floor(t / 60)).padStart(2, '0')}h
-          </span>
-        ))}
+        {ticks.map((t) => {
+          const p = pct(t)
+          // Aligne les ticks de bord pour qu'ils restent dans la carte.
+          const transform =
+            p <= 0.01
+              ? 'translate-x-0'
+              : p >= 99.99
+                ? '-translate-x-full'
+                : '-translate-x-1/2'
+          return (
+            <span
+              key={t}
+              className={`absolute ${transform}`}
+              style={{ left: `${p}%` }}
+            >
+              {String(Math.floor(t / 60)).padStart(2, '0')}h
+            </span>
+          )
+        })}
       </div>
 
       {/* Une bande par journée */}
