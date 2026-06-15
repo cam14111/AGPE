@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { toast } from 'sonner'
 import { supabase } from '@agpe/shared/supabase-client'
 import {
   Card,
@@ -9,11 +8,9 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 
-// URL de retour (magic link ou OAuth) : base de l'app + route hash callback.
+// URL de retour OAuth : base de l'app + route hash callback.
 function buildRedirectUrl(): string {
   return `${window.location.origin}${import.meta.env.BASE_URL}#/auth/callback`
 }
@@ -43,39 +40,12 @@ function GoogleIcon() {
 }
 
 export function Login() {
-  const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
-  const [sent, setSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  async function handleSubmit(e: React.FormEvent): Promise<void> {
-    e.preventDefault()
-    setError(null)
-
-    const trimmed = email.trim()
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setError('Adresse email invalide.')
-      return
-    }
-
-    setLoading(true)
-    const { error: err } = await supabase.auth.signInWithOtp({
-      email: trimmed,
-      options: { emailRedirectTo: buildRedirectUrl() },
-    })
-    setLoading(false)
-
-    if (err) {
-      setError('Envoi impossible. Vérifiez votre adresse et réessayez.')
-      console.error('[kermesse] signInWithOtp error:', err)
-      return
-    }
-    setSent(true)
-    toast.info('Lien de connexion envoyé ! Vérifiez vos emails.')
-  }
 
   async function handleGoogle(): Promise<void> {
     setError(null)
+    setLoading(true)
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: buildRedirectUrl() },
@@ -83,6 +53,7 @@ export function Login() {
     if (err) {
       setError('Connexion Google impossible. Réessayez.')
       console.error('[kermesse] signInWithOAuth error:', err)
+      setLoading(false)
     }
     // En cas de succès, le navigateur est redirigé vers Google.
   }
@@ -96,77 +67,32 @@ export function Login() {
           </div>
           <CardTitle className="text-xl">Connexion bénévole</CardTitle>
           <CardDescription>
-            Événements AGPE — avec Google ou par lien email, sans mot de passe.
+            Événements AGPE — connectez-vous avec votre compte Google.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {sent ? (
-            <div
-              className="rounded-md bg-emerald-50 border border-emerald-200 p-4 text-sm text-emerald-800"
-              role="status"
+          <div className="space-y-4">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => void handleGoogle()}
+              disabled={loading}
+              aria-busy={loading}
             >
-              <p className="font-medium">Vérifiez vos emails 📬</p>
-              <p className="mt-1">
-                Un lien de connexion a été envoyé à{' '}
-                <span className="font-medium">{email.trim()}</span>. Cliquez
-                dessus pour accéder à l'espace bénévoles.
+              <GoogleIcon />
+              {loading ? 'Redirection…' : 'Se connecter avec Google'}
+            </Button>
+            {error && (
+              <p role="alert" className="text-center text-sm text-red-600">
+                {error}
               </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={() => void handleGoogle()}
-              >
-                <GoogleIcon />
-                Se connecter avec Google
-              </Button>
-
-              <div className="flex items-center gap-3 text-xs text-slate-400">
-                <span className="h-px flex-1 bg-slate-200" />
-                ou
-                <span className="h-px flex-1 bg-slate-200" />
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-              <div className="space-y-2">
-                <Label htmlFor="email">Adresse email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  inputMode="email"
-                  autoComplete="email"
-                  placeholder="prenom.nom@exemple.fr"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  aria-describedby={error ? 'email-error' : undefined}
-                  aria-invalid={error ? true : undefined}
-                  required
-                />
-                {error && (
-                  <p id="email-error" role="alert" className="text-sm text-red-600">
-                    {error}
-                  </p>
-                )}
-              </div>
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={loading}
-                aria-busy={loading}
-              >
-                {loading ? 'Envoi…' : 'Recevoir mon lien'}
-              </Button>
-              </form>
-            </div>
-          )}
+            )}
+          </div>
         </CardContent>
         <CardFooter className="justify-center">
-          <p className="text-xs text-slate-400 text-center">
-            Vous recevrez un lien de connexion valable 1 heure. Aucun mot de
-            passe n'est nécessaire.
+          <p className="text-center text-xs text-slate-400">
+            Connexion sécurisée via Google, sans mot de passe à retenir.
           </p>
         </CardFooter>
       </Card>
