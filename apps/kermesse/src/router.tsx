@@ -110,6 +110,7 @@ export function AppRoutes() {
         <Route path="events" element={<Events />} />
         <Route path="stands" element={<Stands />} />
         <Route path="slots" element={<Slots />} />
+        <Route path="planning" element={<MyPlanning />} />
         <Route path="roles" element={<Roles />} />
         <Route path="history" element={<History />} />
       </Route>

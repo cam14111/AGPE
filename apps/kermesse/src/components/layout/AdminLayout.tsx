@@ -3,6 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import {
   BarChart3,
   CalendarDays,
+  ClipboardList,
   Clock,
   Menu,
   ScrollText,
@@ -19,6 +20,7 @@ const navItems = [
   { to: '/admin/events', label: 'Événements', icon: CalendarDays },
   { to: '/admin/stands', label: 'Stands', icon: Tent },
   { to: '/admin/slots', label: 'Créneaux', icon: Clock },
+  { to: '/admin/planning', label: 'Mon planning', icon: ClipboardList },
   { to: '/admin/roles', label: 'Administrateurs', icon: ShieldCheck },
   { to: '/admin/history', label: 'Historique', icon: ScrollText },
 ]
