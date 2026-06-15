@@ -1,6 +1,6 @@
 import { DayTimeline, type TimelineBlock } from '@/components/admin/DayTimeline'
 import {
-  resolveStandDays,
+  resolveEventDaysForStand,
   eventTimeWindow,
   formatTime,
 } from '@/lib/date-utils'
@@ -37,7 +37,7 @@ export function StandSlotsPreview({
   slots,
   fillRates,
 }: StandSlotsPreviewProps) {
-  const days = resolveStandDays(eventRow, daySchedules, openDays)
+  const days = resolveEventDaysForStand(eventRow, daySchedules, openDays)
   const { open: eventOpen, close: eventClose } = eventTimeWindow(eventRow, days)
 
   const blocks: TimelineBlock[] = slots

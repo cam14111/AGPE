@@ -22,6 +22,7 @@ import {
   firstFreeStart,
   generateSlotsAcrossDays,
   resolveStandDays,
+  resolveEventDaysForStand,
   eventTimeWindow,
   formatDayShort,
 } from '@/lib/date-utils'
@@ -62,9 +63,15 @@ export function AutoGenerateSlotsDialog({
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Journées d'ouverture avec leurs horaires applicables.
+  // Journées d'ouverture (avec horaires) pour le calcul de génération.
   const days = useMemo(
     () => resolveStandDays(eventRow, daySchedules, standOpenDays),
+    [standOpenDays, eventRow, daySchedules],
+  )
+
+  // Tous les jours de l'événement pour l'aperçu (jours fermés en gris).
+  const previewDays = useMemo(
+    () => resolveEventDaysForStand(eventRow, daySchedules, standOpenDays),
     [standOpenDays, eventRow, daySchedules],
   )
 
@@ -118,7 +125,7 @@ export function AutoGenerateSlotsDialog({
   }, [days, startDate, startTime, count, duration, existingByDate])
 
   // Bornes de la plage événement pour l'aperçu.
-  const { open: eventOpen, close: eventClose } = eventTimeWindow(eventRow, days)
+  const { open: eventOpen, close: eventClose } = eventTimeWindow(eventRow, previewDays)
 
   async function doGenerate(): Promise<void> {
     const v = Number.parseInt(maxVolunteers, 10) || 1
@@ -244,7 +251,7 @@ export function AutoGenerateSlotsDialog({
                 )}
               </p>
               <SlotGenerationPreview
-                days={days}
+                days={previewDays}
                 eventOpen={eventOpen}
                 eventClose={eventClose}
                 existing={existingSlots

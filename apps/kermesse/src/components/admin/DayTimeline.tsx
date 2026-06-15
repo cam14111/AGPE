@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { formatDayShort, type OpenDay } from '@/lib/date-utils'
+import { formatDayShort, type DayRow } from '@/lib/date-utils'
 
 export interface TimelineBlock {
   date: string
@@ -10,7 +10,7 @@ export interface TimelineBlock {
 }
 
 interface DayTimelineProps {
-  days: OpenDay[]
+  days: DayRow[]
   eventOpen: string
   eventClose: string
   blocks: TimelineBlock[]
@@ -35,8 +35,8 @@ export function DayTimeline({
     let min = toMinutes(eventOpen)
     let max = toMinutes(eventClose)
     for (const d of days) {
-      min = Math.min(min, toMinutes(d.open))
-      max = Math.max(max, toMinutes(d.close))
+      if (d.open) min = Math.min(min, toMinutes(d.open))
+      if (d.close) max = Math.max(max, toMinutes(d.close))
     }
     const span = Math.max(max - min, 60)
     const tickList: number[] = []
@@ -107,10 +107,12 @@ export function DayTimeline({
                 className="absolute top-0 h-full rounded bg-slate-200"
                 style={style(eventOpen, eventClose)}
               />
-              <div
-                className="absolute top-0 h-full rounded bg-emerald-200"
-                style={style(day.open, day.close)}
-              />
+              {day.open && day.close && (
+                <div
+                  className="absolute top-0 h-full rounded bg-emerald-200"
+                  style={style(day.open, day.close)}
+                />
+              )}
               {blocks
                 .filter((b) => b.date === day.date)
                 .map((b, i) => (

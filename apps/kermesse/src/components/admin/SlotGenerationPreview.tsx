@@ -1,5 +1,5 @@
 import { DayTimeline, type TimelineBlock } from '@/components/admin/DayTimeline'
-import { formatTime, type OpenDay, type GeneratedSlot } from '@/lib/date-utils'
+import { formatTime, type DayRow, type GeneratedSlot } from '@/lib/date-utils'
 
 interface ExistingBlock {
   date: string
@@ -8,7 +8,7 @@ interface ExistingBlock {
 }
 
 interface SlotGenerationPreviewProps {
-  days: OpenDay[]
+  days: DayRow[]
   eventOpen: string
   eventClose: string
   existing: ExistingBlock[]

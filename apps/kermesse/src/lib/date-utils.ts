@@ -232,6 +232,13 @@ export interface OpenDay {
   close: string
 }
 
+// Journée d'aperçu : horaires définis uniquement si le stand est ouvert ce jour-là.
+export interface DayRow {
+  date: string
+  open?: string
+  close?: string
+}
+
 // Construit les journées d'ouverture d'un stand avec leurs horaires applicables.
 export function resolveStandDays(
   event: EventRow,
@@ -247,17 +254,35 @@ export function resolveStandDays(
     .filter((d) => d.open && d.close && d.close > d.open)
 }
 
+// Tous les jours de l'événement, avec horaires d'ouverture renseignés seulement
+// pour les jours où le stand est ouvert (les autres restent en gris dans l'aperçu).
+export function resolveEventDaysForStand(
+  event: EventRow,
+  schedules: EventDayScheduleRow[],
+  openDays: string[],
+): DayRow[] {
+  return getEventDays(event.start_date, event.end_date).map((date) => {
+    if (openDays.includes(date)) {
+      const open = resolveOpenTime(event, schedules, date) ?? undefined
+      const close = resolveCloseTime(event, schedules, date) ?? undefined
+      if (open && close && close > open) return { date, open, close }
+    }
+    return { date }
+  })
+}
+
 // Fenêtre horaire de l'événement pour l'aperçu (fallback sur les plages stand).
 export function eventTimeWindow(
   event: EventRow,
-  days: OpenDay[],
+  days: DayRow[],
 ): { open: string; close: string } {
+  const withHours = days.filter((d) => d.open && d.close)
   const open =
     formatTime(event.start_time) ||
-    days.reduce((m, d) => (m && m < d.open ? m : d.open), '')
+    withHours.reduce((m, d) => (m && m < d.open! ? m : d.open!), '')
   const close =
     formatTime(event.end_time) ||
-    days.reduce((m, d) => (m && m > d.close ? m : d.close), '')
+    withHours.reduce((m, d) => (m && m > d.close! ? m : d.close!), '')
   return { open: open || '08:00', close: close || '20:00' }
 }
 
