@@ -56,7 +56,7 @@ export function AdminLayout() {
   return (
     <div className="min-h-dvh bg-slate-50">
       {/* En-tête mobile */}
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b bg-white px-4 h-14 md:pl-[256px]">
+      <header className="sticky top-0 z-30 flex items-center justify-between border-b bg-white px-4 h-14 md:pl-[280px]">
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
@@ -72,13 +72,14 @@ export function AdminLayout() {
               className="h-7 w-7 object-contain"
             />
           </Button>
-          <span className="font-semibold text-slate-900">Admin Événements</span>
+          <span className="font-semibold text-slate-900">Admin Événements AGPE</span>
         </div>
         <AccountMenu />
       </header>
 
-      {/* Sidebar desktop */}
-      <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:w-64 md:border-r md:bg-white md:p-4">
+      {/* Sidebar desktop — z au-dessus du header pour que la bannière (en haut)
+          ne soit pas masquée par celui-ci. */}
+      <aside className="hidden md:z-40 md:flex md:flex-col md:fixed md:inset-y-0 md:w-64 md:border-r md:bg-white md:p-4">
         <div className="mb-6 px-2">
           <img
             src={`${import.meta.env.BASE_URL}logo-agpe-banner.jpg`}
