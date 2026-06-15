@@ -49,7 +49,8 @@ export function useEvents(): UseEventsResult {
     async (input: TablesInsert<'kermesse_events'>): Promise<string | null> => {
       const { data, error: err } = await supabase
         .from('kermesse_events')
-        .insert(input)
+        // Renseigne la colonne héritée `date` (NOT NULL) avec la date de début.
+        .insert({ ...input, date: input.date ?? input.start_date })
         .select('id')
         .single()
       if (err) {
@@ -71,7 +72,8 @@ export function useEvents(): UseEventsResult {
     ): Promise<boolean> => {
       const { error: err } = await supabase
         .from('kermesse_events')
-        .update(input)
+        // Maintient la colonne héritée `date` alignée sur la date de début.
+        .update(input.start_date ? { ...input, date: input.start_date } : input)
         .eq('id', id)
       if (err) {
         toast.error('Impossible de modifier l\'événement.')
