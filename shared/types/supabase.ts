@@ -7,8 +7,7 @@
 //     > shared/types/supabase.ts
 //
 // La version ci-dessous est une définition manuelle fidèle aux migrations
-// 0001 → 0007, fournie pour permettre un build typé tant que la génération CLI
-// n'a pas été exécutée contre le projet réel.
+// 0001 → 0018.
 
 export type Json =
   | string
@@ -56,6 +55,8 @@ export interface Database {
           id: string
           name: string
           date: string
+          start_date: string
+          end_date: string
           location: string | null
           description: string | null
           start_time: string | null
@@ -67,7 +68,9 @@ export interface Database {
         Insert: {
           id?: string
           name: string
-          date: string
+          date?: string
+          start_date: string
+          end_date: string
           location?: string | null
           description?: string | null
           start_time?: string | null
@@ -80,6 +83,8 @@ export interface Database {
           id?: string
           name?: string
           date?: string
+          start_date?: string
+          end_date?: string
           location?: string | null
           description?: string | null
           start_time?: string | null
@@ -90,11 +95,46 @@ export interface Database {
         }
         Relationships: []
       }
+      kermesse_event_day_schedules: {
+        Row: {
+          id: string
+          event_id: string
+          date: string
+          open_time: string
+          close_time: string
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          event_id: string
+          date: string
+          open_time: string
+          close_time: string
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          event_id?: string
+          date?: string
+          open_time?: string
+          close_time?: string
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'kermesse_event_day_schedules_event_id_fkey'
+            columns: ['event_id']
+            referencedRelation: 'kermesse_events'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       kermesse_stands: {
         Row: {
           id: string
           event_id: string
           name: string
+          date: string | null
           description: string | null
           location_detail: string | null
           emoji: string | null
@@ -104,6 +144,7 @@ export interface Database {
           id?: string
           event_id: string
           name: string
+          date?: string | null
           description?: string | null
           location_detail?: string | null
           emoji?: string | null
@@ -113,6 +154,7 @@ export interface Database {
           id?: string
           event_id?: string
           name?: string
+          date?: string | null
           description?: string | null
           location_detail?: string | null
           emoji?: string | null
@@ -131,6 +173,7 @@ export interface Database {
         Row: {
           id: string
           stand_id: string
+          date: string | null
           start_time: string
           end_time: string
           max_volunteers: number
@@ -139,6 +182,7 @@ export interface Database {
         Insert: {
           id?: string
           stand_id: string
+          date?: string | null
           start_time: string
           end_time: string
           max_volunteers?: number
@@ -147,6 +191,7 @@ export interface Database {
         Update: {
           id?: string
           stand_id?: string
+          date?: string | null
           start_time?: string
           end_time?: string
           max_volunteers?: number

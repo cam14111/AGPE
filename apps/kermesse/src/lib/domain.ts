@@ -2,6 +2,7 @@
 import type { Tables } from '@agpe/shared/types/supabase'
 
 export type EventRow = Tables<'kermesse_events'>
+export type EventDayScheduleRow = Tables<'kermesse_event_day_schedules'>
 export type StandRow = Tables<'kermesse_stands'>
 export type SlotRow = Tables<'kermesse_slots'>
 export type SignupRow = Tables<'kermesse_signups'>

@@ -1,7 +1,10 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { CheckCircle2, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useEvents } from '@/hooks/useEvents'
+import { useEventDaySchedules } from '@/hooks/useEventDaySchedules'
 import { EventForm } from '@/components/admin/EventForm'
+import { PostCreationDialog } from '@/components/admin/PostCreationDialog'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton'
@@ -9,10 +12,11 @@ import { ErrorMessage } from '@/components/shared/ErrorMessage'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { formatEventDate } from '@/lib/date-utils'
+import { formatEventDateRange } from '@/lib/date-utils'
 import type { EventRow } from '@/lib/domain'
 
 export function Events() {
+  const navigate = useNavigate()
   const {
     events,
     loading,
@@ -28,6 +32,14 @@ export function Events() {
   const [editing, setEditing] = useState<EventRow | null>(null)
   const [toDelete, setToDelete] = useState<EventRow | null>(null)
   const [toActivate, setToActivate] = useState<EventRow | null>(null)
+  const [postCreationEventId, setPostCreationEventId] = useState<string | null>(null)
+  // Ref pour accès synchrone à l'ID créé (les state updates sont async).
+  const justCreatedIdRef = useRef<string | null>(null)
+
+  // Horaires personnalisés pour l'événement en cours d'édition.
+  const { schedules: daySchedules, upsertSchedule } = useEventDaySchedules(
+    editing?.id ?? null,
+  )
 
   function openCreate(): void {
     setEditing(null)
@@ -79,7 +91,7 @@ export function Events() {
                     )}
                   </div>
                   <p className="text-sm text-slate-600">
-                    {formatEventDate(event.date)}
+                    {formatEventDateRange(event.start_date, event.end_date)}
                     {event.location ? ` · ${event.location}` : ''}
                   </p>
                 </div>
@@ -120,10 +132,59 @@ export function Events() {
       <EventForm
         open={formOpen}
         event={editing}
+        daySchedules={daySchedules}
         onOpenChange={setFormOpen}
-        onSubmit={(values) =>
-          editing ? updateEvent(editing.id, values) : createEvent(values)
-        }
+        onSubmit={async (values) => {
+          if (editing) return updateEvent(editing.id, values)
+          const id = await createEvent(values)
+          if (id !== null) {
+            justCreatedIdRef.current = id
+            setPostCreationEventId(id)
+            return true
+          }
+          return false
+        }}
+        onSubmitDaySchedules={async (schedules) => {
+          // Utilise la ref (synchrone) plutôt que le state (async) pour l'ID créé.
+          const eventId = editing?.id ?? justCreatedIdRef.current
+          if (!eventId) return
+          for (const s of schedules) {
+            await upsertSchedule(eventId, s.date, s.open_time, s.close_time)
+          }
+        }}
+        onCreated={() => {
+          setFormOpen(false)
+        }}
+      />
+
+      <PostCreationDialog
+        open={postCreationEventId !== null}
+        title="Événement créé !"
+        actions={[
+          {
+            label: 'Créer les stands de cet événement',
+            onClick: () => {
+              navigate(`/admin/stands?eventId=${postCreationEventId}`)
+              setPostCreationEventId(null)
+            },
+          },
+          {
+            label: 'Créer un autre événement',
+            variant: 'outline',
+            onClick: () => {
+              setPostCreationEventId(null)
+              openCreate()
+            },
+          },
+          {
+            label: 'Terminer',
+            variant: 'outline',
+            onClick: () => setPostCreationEventId(null),
+          },
+        ]}
+        onOpenChange={(o) => {
+          if (!o) setPostCreationEventId(null)
+        }}
       />
 
       <ConfirmDialog

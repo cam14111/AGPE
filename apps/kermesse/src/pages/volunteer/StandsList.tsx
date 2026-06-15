@@ -8,7 +8,7 @@ import { StandCard } from '@/components/volunteer/StandCard'
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton'
 import { ErrorMessage } from '@/components/shared/ErrorMessage'
 import {
-  formatEventDate,
+  formatEventDateRange,
   formatTime,
   isEventPast,
   timesOverlap,
@@ -35,6 +35,7 @@ export function StandsList() {
     return mySignups.some(
       (s) =>
         s.slotId !== slot.id &&
+        s.slotDate === (slot.date ?? '') &&
         timesOverlap(slot.start_time, slot.end_time, s.startTime, s.endTime),
     )
   }
@@ -74,7 +75,7 @@ export function StandsList() {
     )
   }
 
-  const pastEvent = isEventPast(event.date)
+  const pastEvent = isEventPast(event.end_date)
   const timeRange =
     event.start_time && event.end_time
       ? ` · ${formatTime(event.start_time)} – ${formatTime(event.end_time)}`
@@ -85,7 +86,7 @@ export function StandsList() {
       <section className="rounded-lg border border-amber-200 bg-amber-50 p-4">
         <h1 className="text-2xl font-bold text-slate-900">{event.name}</h1>
         <p className="text-sm text-amber-800 mt-1">
-          {formatEventDate(event.date)}
+          {formatEventDateRange(event.start_date, event.end_date)}
           {timeRange}
         </p>
         {event.location && (

@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { Pencil, Plus, Trash2, Wand2 } from 'lucide-react'
 import { useAuth } from '@agpe/shared/auth/useAuth'
 import { useActiveEvent } from '@/hooks/useActiveEvent'
 import { useStands } from '@/hooks/useStands'
+import { useEventDaySchedules } from '@/hooks/useEventDaySchedules'
 import { useFillRates } from '@/hooks/useFillRates'
 import { useSlotMutations } from '@/hooks/useSlotMutations'
 import { useSignups } from '@/hooks/useSignups'
 import { useAdminSignups, type AdminSignupDetail } from '@/hooks/useAdminSignups'
 import { SlotForm } from '@/components/admin/SlotForm'
+import { AutoGenerateSlotsDialog } from '@/components/admin/AutoGenerateSlotsDialog'
 import { SlotBadge } from '@/components/volunteer/SlotBadge'
 import { ParticipantChip } from '@/components/admin/ParticipantChip'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
@@ -29,15 +31,19 @@ import { participantLabel } from '@/lib/participant'
 import type { SlotRow } from '@/lib/domain'
 
 export function Slots() {
+  const [searchParams] = useSearchParams()
+  const queryStandId = searchParams.get('standId')
+
   const { event, loading: eventLoading } = useActiveEvent()
   const eventId = event?.id ?? null
   const { stands, loading, error, refetch } = useStands(eventId)
+  const { schedules: daySchedules } = useEventDaySchedules(eventId)
   const { user } = useAuth()
   const { fillRates, refetch: refetchFillRates } = useFillRates()
   const { details, removeSignup, refetch: refetchDetails } =
     useAdminSignups(eventId)
   const { signUp, unsignUp } = useSignups()
-  const { createSlot, updateSlot, deleteSlot } = useSlotMutations(() => {
+  const { createSlot, createSlots, updateSlot, deleteSlot } = useSlotMutations(() => {
     refetch()
     refetchFillRates()
   })
@@ -48,8 +54,17 @@ export function Slots() {
   const [toDelete, setToDelete] = useState<SlotRow | null>(null)
   const [toRemove, setToRemove] = useState<AdminSignupDetail | null>(null)
   const [selfBusySlot, setSelfBusySlot] = useState<string | null>(null)
+  const [autoGenerateOpen, setAutoGenerateOpen] = useState(false)
 
-  // Inscription / désinscription de l'admin lui-même sur un créneau.
+  // Sélectionne le stand via URL param ou le premier par défaut.
+  useEffect(() => {
+    if (queryStandId && stands.some((s) => s.id === queryStandId)) {
+      setSelectedStandId(queryStandId)
+    } else if (!selectedStandId && stands.length > 0) {
+      setSelectedStandId(stands[0]?.id ?? '')
+    }
+  }, [stands, selectedStandId, queryStandId])
+
   async function toggleSelfSignup(slot: SlotRow): Promise<void> {
     if (!user) return
     const mine = (participantsBySlot.get(slot.id) ?? []).find(
@@ -69,7 +84,6 @@ export function Slots() {
     }
   }
 
-  // Inscrits regroupés par créneau.
   const participantsBySlot = useMemo(() => {
     const map = new Map<string, AdminSignupDetail[]>()
     for (const d of details) {
@@ -79,13 +93,6 @@ export function Slots() {
     }
     return map
   }, [details])
-
-  // Sélectionne le premier stand par défaut une fois la liste chargée.
-  useEffect(() => {
-    if (!selectedStandId && stands.length > 0) {
-      setSelectedStandId(stands[0]?.id ?? '')
-    }
-  }, [stands, selectedStandId])
 
   if (eventLoading) return <LoadingSkeleton />
 
@@ -163,11 +170,27 @@ export function Slots() {
               <CardHeader className="flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-base">
                   Créneaux — {selectedStand.name}
+                  {selectedStand.date && (
+                    <span className="ml-2 text-sm font-normal text-slate-500">
+                      ({selectedStand.date})
+                    </span>
+                  )}
                 </CardTitle>
-                <Button size="sm" onClick={openCreate}>
-                  <Plus className="h-4 w-4" />
-                  Nouveau créneau
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setAutoGenerateOpen(true)}
+                    aria-label="Autogénérer des créneaux"
+                  >
+                    <Wand2 className="h-4 w-4" />
+                    Autogénérer
+                  </Button>
+                  <Button size="sm" onClick={openCreate}>
+                    <Plus className="h-4 w-4" />
+                    Nouveau créneau
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-2">
                 {selectedStand.kermesse_slots.length === 0 ? (
@@ -190,6 +213,11 @@ export function Slots() {
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div className="flex items-center gap-3">
                             <span className="text-sm font-medium text-slate-800">
+                              {slot.date && slot.date !== selectedStand.date && (
+                                <span className="mr-1 text-xs text-slate-400">
+                                  {slot.date}
+                                </span>
+                              )}
                               {formatTime(slot.start_time)} →{' '}
                               {formatTime(slot.end_time)}
                             </span>
@@ -253,15 +281,32 @@ export function Slots() {
       )}
 
       {selectedStand && (
-        <SlotForm
-          open={formOpen}
-          slot={editing}
-          standId={selectedStand.id}
-          onOpenChange={setFormOpen}
-          onSubmit={(values) =>
-            editing ? updateSlot(editing.id, values) : createSlot(values)
-          }
-        />
+        <>
+          <SlotForm
+            open={formOpen}
+            slot={editing}
+            standId={selectedStand.id}
+            standDate={selectedStand.date ?? event.start_date}
+            eventRow={event}
+            daySchedules={daySchedules}
+            existingSlots={selectedStand.kermesse_slots}
+            onOpenChange={setFormOpen}
+            onSubmit={(values) =>
+              editing ? updateSlot(editing.id, values) : createSlot(values)
+            }
+          />
+
+          <AutoGenerateSlotsDialog
+            open={autoGenerateOpen}
+            standId={selectedStand.id}
+            standDate={selectedStand.date ?? event.start_date}
+            eventRow={event}
+            daySchedules={daySchedules}
+            existingSlots={selectedStand.kermesse_slots}
+            onGenerate={createSlots}
+            onOpenChange={(o) => setAutoGenerateOpen(o)}
+          />
+        </>
       )}
 
       <ConfirmDialog

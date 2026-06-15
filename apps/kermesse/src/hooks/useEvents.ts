@@ -9,7 +9,7 @@ interface UseEventsResult {
   loading: boolean
   error: string | null
   refetch: () => void
-  createEvent: (input: TablesInsert<'kermesse_events'>) => Promise<boolean>
+  createEvent: (input: TablesInsert<'kermesse_events'>) => Promise<string | null>
   updateEvent: (
     id: string,
     input: TablesUpdate<'kermesse_events'>,
@@ -30,7 +30,7 @@ export function useEvents(): UseEventsResult {
     const { data, error: err } = await supabase
       .from('kermesse_events')
       .select('*')
-      .order('date', { ascending: false })
+      .order('start_date', { ascending: false })
 
     if (err) {
       setError(err.message)
@@ -46,18 +46,20 @@ export function useEvents(): UseEventsResult {
   }, [fetchEvents])
 
   const createEvent = useCallback(
-    async (input: TablesInsert<'kermesse_events'>): Promise<boolean> => {
-      const { error: err } = await supabase
+    async (input: TablesInsert<'kermesse_events'>): Promise<string | null> => {
+      const { data, error: err } = await supabase
         .from('kermesse_events')
         .insert(input)
+        .select('id')
+        .single()
       if (err) {
         toast.error('Impossible de créer l\'événement.')
         console.error('[kermesse] createEvent error:', err)
-        return false
+        return null
       }
       toast.success('Enregistré avec succès.')
       await fetchEvents()
-      return true
+      return data.id
     },
     [fetchEvents],
   )

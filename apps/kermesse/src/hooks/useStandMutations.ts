@@ -4,7 +4,7 @@ import { supabase } from '@agpe/shared/supabase-client'
 import type { TablesInsert, TablesUpdate } from '@agpe/shared/types/supabase'
 
 interface UseStandMutationsResult {
-  createStand: (input: TablesInsert<'kermesse_stands'>) => Promise<boolean>
+  createStand: (input: TablesInsert<'kermesse_stands'>) => Promise<string | null>
   updateStand: (
     id: string,
     input: TablesUpdate<'kermesse_stands'>,
@@ -17,16 +17,20 @@ export function useStandMutations(
   onChange: () => void,
 ): UseStandMutationsResult {
   const createStand = useCallback(
-    async (input: TablesInsert<'kermesse_stands'>): Promise<boolean> => {
-      const { error } = await supabase.from('kermesse_stands').insert(input)
+    async (input: TablesInsert<'kermesse_stands'>): Promise<string | null> => {
+      const { data, error } = await supabase
+        .from('kermesse_stands')
+        .insert(input)
+        .select('id')
+        .single()
       if (error) {
         toast.error('Impossible de créer le stand.')
         console.error('[kermesse] createStand error:', error)
-        return false
+        return null
       }
       toast.success('Enregistré avec succès.')
       onChange()
-      return true
+      return data.id
     },
     [onChange],
   )

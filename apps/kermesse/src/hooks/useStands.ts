@@ -35,9 +35,11 @@ export function useStands(eventId: string | null): UseStandsResult {
     } else {
       const sorted = (data ?? []).map((stand) => ({
         ...stand,
-        kermesse_slots: [...stand.kermesse_slots].sort((a, b) =>
-          a.start_time.localeCompare(b.start_time),
-        ),
+        kermesse_slots: [...stand.kermesse_slots].sort((a, b) => {
+          const dateCmp = (a.date ?? '').localeCompare(b.date ?? '')
+          if (dateCmp !== 0) return dateCmp
+          return a.start_time.localeCompare(b.start_time)
+        }),
       }))
       setStands(sorted)
     }

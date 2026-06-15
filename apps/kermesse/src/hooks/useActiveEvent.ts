@@ -41,3 +41,37 @@ export function useActiveEvent(): UseActiveEventResult {
 
   return { event, loading, error, refetch: fetchEvent }
 }
+
+interface UseEventByIdResult {
+  event: KermesseEvent | null
+  loading: boolean
+}
+
+// Récupère un événement par son ID (utilisé pour la présélection via URL param).
+export function useEventById(eventId: string | null): UseEventByIdResult {
+  const [event, setEvent] = useState<KermesseEvent | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!eventId) {
+      setEvent(null)
+      return
+    }
+    let cancelled = false
+    setLoading(true)
+    void supabase
+      .from('kermesse_events')
+      .select('*')
+      .eq('id', eventId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) {
+          setEvent(data)
+          setLoading(false)
+        }
+      })
+    return () => { cancelled = true }
+  }, [eventId])
+
+  return { event, loading }
+}

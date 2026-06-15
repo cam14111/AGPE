@@ -76,7 +76,7 @@ export function MyPlanning() {
               </CardHeader>
               <CardContent className="space-y-2">
                 {group.signups.map((s) => {
-                  const past = isEventPast(s.eventDate)
+                  const past = isEventPast(s.eventEndDate)
                   return (
                     <div
                       key={s.id}

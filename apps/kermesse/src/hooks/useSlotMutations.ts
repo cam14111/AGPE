@@ -5,6 +5,7 @@ import type { TablesInsert, TablesUpdate } from '@agpe/shared/types/supabase'
 
 interface UseSlotMutationsResult {
   createSlot: (input: TablesInsert<'kermesse_slots'>) => Promise<boolean>
+  createSlots: (inputs: TablesInsert<'kermesse_slots'>[]) => Promise<boolean>
   updateSlot: (
     id: string,
     input: TablesUpdate<'kermesse_slots'>,
@@ -23,6 +24,22 @@ export function useSlotMutations(onChange: () => void): UseSlotMutationsResult {
         return false
       }
       toast.success('Enregistré avec succès.')
+      onChange()
+      return true
+    },
+    [onChange],
+  )
+
+  const createSlots = useCallback(
+    async (inputs: TablesInsert<'kermesse_slots'>[]): Promise<boolean> => {
+      if (inputs.length === 0) return true
+      const { error } = await supabase.from('kermesse_slots').insert(inputs)
+      if (error) {
+        toast.error('Impossible de créer les créneaux.')
+        console.error('[kermesse] createSlots error:', error)
+        return false
+      }
+      toast.success(`${inputs.length} créneau${inputs.length > 1 ? 'x' : ''} créé${inputs.length > 1 ? 's' : ''}.`)
       onChange()
       return true
     },
@@ -68,5 +85,5 @@ export function useSlotMutations(onChange: () => void): UseSlotMutationsResult {
     [onChange],
   )
 
-  return { createSlot, updateSlot, deleteSlot }
+  return { createSlot, createSlots, updateSlot, deleteSlot }
 }

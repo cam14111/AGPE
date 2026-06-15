@@ -10,10 +10,12 @@ export interface MySignup {
   createdAt: string | null
   startTime: string
   endTime: string
+  slotDate: string
   standName: string
   standEmoji: string | null
   eventName: string
   eventDate: string
+  eventEndDate: string
 }
 
 interface UseMySignupsResult {
@@ -33,10 +35,11 @@ interface RawSignupRow {
   kermesse_slots: {
     start_time: string
     end_time: string
+    date: string | null
     kermesse_stands: {
       name: string
       emoji: string | null
-      kermesse_events: { name: string; date: string } | null
+      kermesse_events: { name: string; date: string; end_date: string } | null
     } | null
   } | null
 }
@@ -60,10 +63,10 @@ export function useMySignups(userId: string | null): UseMySignupsResult {
       .select(
         `id, slot_id, status, created_at,
          kermesse_slots (
-           start_time, end_time,
+           start_time, end_time, date,
            kermesse_stands (
              name, emoji,
-             kermesse_events ( name, date )
+             kermesse_events ( name, date, end_date )
            )
          )`,
       )
@@ -88,10 +91,12 @@ export function useMySignups(userId: string | null): UseMySignupsResult {
         createdAt: row.created_at,
         startTime: slot?.start_time ?? '',
         endTime: slot?.end_time ?? '',
+        slotDate: slot?.date ?? '',
         standName: stand?.name ?? 'Stand',
         standEmoji: stand?.emoji ?? null,
         eventName: event?.name ?? '',
         eventDate: event?.date ?? '',
+        eventEndDate: event?.end_date ?? '',
       }
     })
     mapped.sort(
