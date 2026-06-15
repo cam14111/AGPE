@@ -1,10 +1,13 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { CalendarClock, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useActiveEvent, useEventById } from '@/hooks/useActiveEvent'
 import { useStands } from '@/hooks/useStands'
 import { useStandMutations } from '@/hooks/useStandMutations'
+import { useEventDaySchedules } from '@/hooks/useEventDaySchedules'
+import { useFillRates } from '@/hooks/useFillRates'
 import { StandForm } from '@/components/admin/StandForm'
+import { StandSlotsPreview } from '@/components/admin/StandSlotsPreview'
 import { PostCreationDialog } from '@/components/admin/PostCreationDialog'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -29,11 +32,14 @@ export function Stands() {
 
   const { stands, loading, error, refetch } = useStands(eventId)
   const { createStand, updateStand, deleteStand } = useStandMutations(refetch)
+  const { schedules: daySchedules } = useEventDaySchedules(eventId)
+  const { fillRates } = useFillRates()
 
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<StandWithSlots | null>(null)
   const [toDelete, setToDelete] = useState<StandWithSlots | null>(null)
   const [postCreationStandId, setPostCreationStandId] = useState<string | null>(null)
+  const [hoveredId, setHoveredId] = useState<string | null>(null)
 
   if (eventLoading) return <LoadingSkeleton />
 
@@ -94,43 +100,75 @@ export function Stands() {
           {stands.map((stand) => {
             const days = standOpenDays(stand)
             const daysLabel = days.map(formatDayShort).join(', ')
+            const hovered = hoveredId === stand.id
+            const hasSlots = stand.kermesse_slots.length > 0
             return (
-              <Card key={stand.id}>
-                <CardContent className="flex flex-wrap items-center justify-between gap-4 p-4">
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl" aria-hidden="true">
-                      {stand.emoji ?? '🎪'}
-                    </span>
-                    <div>
-                      <h2 className="text-base font-semibold text-slate-800">
-                        {stand.name}
-                      </h2>
-                      <p className="text-xs text-slate-400">
-                        {stand.kermesse_slots.length} créneau
-                        {stand.kermesse_slots.length > 1 ? 'x' : ''}
-                        {daysLabel ? ` · ${daysLabel}` : ''}
-                        {stand.location_detail ? ` · ${stand.location_detail}` : ''}
-                      </p>
+              <Card
+                key={stand.id}
+                onMouseEnter={() => setHoveredId(stand.id)}
+                onMouseLeave={() =>
+                  setHoveredId((prev) => (prev === stand.id ? null : prev))
+                }
+              >
+                <CardContent className="space-y-3 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl" aria-hidden="true">
+                        {stand.emoji ?? '🎪'}
+                      </span>
+                      <div>
+                        <h2 className="text-base font-semibold text-slate-800">
+                          {stand.name}
+                        </h2>
+                        <p className="text-xs text-slate-400">
+                          {stand.kermesse_slots.length} créneau
+                          {stand.kermesse_slots.length > 1 ? 'x' : ''}
+                          {daysLabel ? ` · ${daysLabel}` : ''}
+                          {stand.location_detail ? ` · ${stand.location_detail}` : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => navigate(`/admin/slots?standId=${stand.id}`)}
+                        aria-label={`Gérer les créneaux de ${stand.name}`}
+                        title="Gérer les créneaux"
+                      >
+                        <CalendarClock className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openEdit(stand)}
+                        aria-label={`Modifier ${stand.name}`}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setToDelete(stand)}
+                        aria-label={`Supprimer ${stand.name}`}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-600" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => openEdit(stand)}
-                      aria-label={`Modifier ${stand.name}`}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setToDelete(stand)}
-                      aria-label={`Supprimer ${stand.name}`}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-600" />
-                    </Button>
-                  </div>
+
+                  {/* Aperçu des créneaux au survol */}
+                  {hovered && hasSlots && (
+                    <div className="border-t pt-3">
+                      <StandSlotsPreview
+                        eventRow={event}
+                        daySchedules={daySchedules}
+                        openDays={days}
+                        slots={stand.kermesse_slots}
+                        fillRates={fillRates}
+                      />
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )

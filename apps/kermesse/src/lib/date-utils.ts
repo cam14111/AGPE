@@ -232,6 +232,35 @@ export interface OpenDay {
   close: string
 }
 
+// Construit les journées d'ouverture d'un stand avec leurs horaires applicables.
+export function resolveStandDays(
+  event: EventRow,
+  schedules: EventDayScheduleRow[],
+  openDays: string[],
+): OpenDay[] {
+  return openDays
+    .map((date) => ({
+      date,
+      open: resolveOpenTime(event, schedules, date) ?? '',
+      close: resolveCloseTime(event, schedules, date) ?? '',
+    }))
+    .filter((d) => d.open && d.close && d.close > d.open)
+}
+
+// Fenêtre horaire de l'événement pour l'aperçu (fallback sur les plages stand).
+export function eventTimeWindow(
+  event: EventRow,
+  days: OpenDay[],
+): { open: string; close: string } {
+  const open =
+    formatTime(event.start_time) ||
+    days.reduce((m, d) => (m && m < d.open ? m : d.open), '')
+  const close =
+    formatTime(event.end_time) ||
+    days.reduce((m, d) => (m && m > d.close ? m : d.close), '')
+  return { open: open || '08:00', close: close || '20:00' }
+}
+
 export interface GeneratedSlot {
   date: string
   start_time: string

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Pencil, Plus, Trash2, Wand2 } from 'lucide-react'
 import { useAuth } from '@agpe/shared/auth/useAuth'
@@ -11,6 +11,7 @@ import { useSignups } from '@/hooks/useSignups'
 import { useAdminSignups, type AdminSignupDetail } from '@/hooks/useAdminSignups'
 import { SlotForm } from '@/components/admin/SlotForm'
 import { AutoGenerateSlotsDialog } from '@/components/admin/AutoGenerateSlotsDialog'
+import { StandSlotsPreview } from '@/components/admin/StandSlotsPreview'
 import { SlotBadge } from '@/components/volunteer/SlotBadge'
 import { ParticipantChip } from '@/components/admin/ParticipantChip'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
@@ -50,13 +51,15 @@ export function Slots() {
   })
 
   const [selectedStandId, setSelectedStandId] = useState<string>('')
-  const [selectedDay, setSelectedDay] = useState<string>('')
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<SlotRow | null>(null)
+  const [createDay, setCreateDay] = useState<string>('')
   const [toDelete, setToDelete] = useState<SlotRow | null>(null)
   const [toRemove, setToRemove] = useState<AdminSignupDetail | null>(null)
   const [selfBusySlot, setSelfBusySlot] = useState<string | null>(null)
   const [autoGenerateOpen, setAutoGenerateOpen] = useState(false)
+  // Garde : le paramètre d'URL ne présélectionne le stand qu'une seule fois.
+  const queryApplied = useRef(false)
 
   const selectedStand = stands.find((s) => s.id === selectedStandId) ?? null
   const openDays = useMemo(
@@ -64,21 +67,20 @@ export function Slots() {
     [selectedStand],
   )
 
-  // Sélectionne le stand via URL param ou le premier par défaut.
+  // Sélectionne le stand via URL param (une fois) ou le premier par défaut.
   useEffect(() => {
-    if (queryStandId && stands.some((s) => s.id === queryStandId)) {
+    if (stands.length === 0) return
+    if (
+      !queryApplied.current &&
+      queryStandId &&
+      stands.some((s) => s.id === queryStandId)
+    ) {
       setSelectedStandId(queryStandId)
-    } else if (!selectedStandId && stands.length > 0) {
+      queryApplied.current = true
+    } else if (!selectedStandId) {
       setSelectedStandId(stands[0]?.id ?? '')
     }
   }, [stands, selectedStandId, queryStandId])
-
-  // Sélectionne la première journée d'ouverture quand le stand change.
-  useEffect(() => {
-    if (openDays.length > 0 && !openDays.includes(selectedDay)) {
-      setSelectedDay(openDays[0] ?? '')
-    }
-  }, [openDays, selectedDay])
 
   async function toggleSelfSignup(slot: SlotRow): Promise<void> {
     if (!user) return
@@ -129,19 +131,78 @@ export function Slots() {
     )
   }
 
-  // Créneaux de la journée sélectionnée (la vue se concentre sur un jour).
-  const slotsForDay = selectedStand
-    ? selectedStand.kermesse_slots.filter((s) => (s.date ?? '') === selectedDay)
-    : []
-
-  function openCreate(): void {
+  function openCreate(day: string): void {
     setEditing(null)
+    setCreateDay(day)
     setFormOpen(true)
   }
 
   function openEdit(slot: SlotRow): void {
     setEditing(slot)
     setFormOpen(true)
+  }
+
+  function renderSlot(slot: SlotRow) {
+    const fill = fillRates[slot.id]
+    const current = fill?.currentCount ?? 0
+    const participants = participantsBySlot.get(slot.id) ?? []
+    const mine = participants.find((p) => p.user_id === user?.id)
+    const isFull = current >= slot.max_volunteers
+    const busy = selfBusySlot === slot.id
+    return (
+      <div key={slot.id} className="space-y-2 rounded-md border bg-white p-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-slate-800">
+              {formatTime(slot.start_time)} → {formatTime(slot.end_time)}
+            </span>
+            <SlotBadge current={current} max={slot.max_volunteers} />
+            <span className="text-xs text-slate-400">
+              {current} / {slot.max_volunteers}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={mine ? 'outline' : 'default'}
+              size="sm"
+              onClick={() => void toggleSelfSignup(slot)}
+              disabled={busy}
+              aria-busy={busy}
+            >
+              {mine ? 'Me désinscrire' : isFull ? 'Remplaçant' : "M'inscrire"}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => openEdit(slot)}
+              aria-label="Modifier le créneau"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setToDelete(slot)}
+              aria-label="Supprimer le créneau"
+            >
+              <Trash2 className="h-4 w-4 text-red-600" />
+            </Button>
+          </div>
+        </div>
+
+        {participants.length > 0 && (
+          <div className="flex flex-wrap gap-1 border-t pt-2">
+            {participants.map((p) => (
+              <ParticipantChip
+                key={p.signup_id}
+                detail={p}
+                onRemove={() => setToRemove(p)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    )
   }
 
   return (
@@ -168,145 +229,81 @@ export function Slots() {
         </div>
       ) : (
         <>
-          <div className="mb-4 flex flex-wrap gap-3">
-            <div className="max-w-xs flex-1">
-              <Select value={selectedStandId} onValueChange={setSelectedStandId}>
-                <SelectTrigger aria-label="Choisir un stand">
-                  <SelectValue placeholder="Choisir un stand" />
-                </SelectTrigger>
-                <SelectContent>
-                  {stands.map((stand) => (
-                    <SelectItem key={stand.id} value={stand.id}>
-                      {(stand.emoji ?? '🎪') + ' ' + stand.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {openDays.length > 0 && (
-              <div className="max-w-[12rem] flex-1">
-                <Select value={selectedDay} onValueChange={setSelectedDay}>
-                  <SelectTrigger aria-label="Choisir une journée">
-                    <SelectValue placeholder="Choisir une journée" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {openDays.map((day) => (
-                      <SelectItem key={day} value={day} className="capitalize">
-                        {formatDayShort(day)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+          <div className="mb-4 max-w-xs">
+            <Select value={selectedStandId} onValueChange={setSelectedStandId}>
+              <SelectTrigger aria-label="Choisir un stand">
+                <SelectValue placeholder="Choisir un stand" />
+              </SelectTrigger>
+              <SelectContent>
+                {stands.map((stand) => (
+                  <SelectItem key={stand.id} value={stand.id}>
+                    {(stand.emoji ?? '🎪') + ' ' + stand.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {selectedStand && (
-            <Card>
-              <CardHeader className="flex-row items-center justify-between space-y-0">
-                <CardTitle className="text-base capitalize">
-                  {selectedStand.name}
-                  {selectedDay && (
-                    <span className="ml-2 text-sm font-normal text-slate-500">
-                      — {formatDayShort(selectedDay)}
-                    </span>
-                  )}
-                </CardTitle>
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setAutoGenerateOpen(true)}
-                    aria-label="Autogénérer des créneaux"
-                  >
-                    <Wand2 className="h-4 w-4" />
-                    Autogénérer
-                  </Button>
-                  <Button size="sm" onClick={openCreate}>
-                    <Plus className="h-4 w-4" />
-                    Nouveau créneau
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {slotsForDay.length === 0 ? (
-                  <p className="py-6 text-center text-sm text-slate-400">
-                    Aucun créneau pour cette journée. Ajoutez-en un.
-                  </p>
-                ) : (
-                  slotsForDay.map((slot) => {
-                    const fill = fillRates[slot.id]
-                    const current = fill?.currentCount ?? 0
-                    const participants = participantsBySlot.get(slot.id) ?? []
-                    const mine = participants.find((p) => p.user_id === user?.id)
-                    const isFull = current >= slot.max_volunteers
-                    const busy = selfBusySlot === slot.id
-                    return (
-                      <div
-                        key={slot.id}
-                        className="space-y-2 rounded-md border bg-white p-3"
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div className="flex items-center gap-3">
-                            <span className="text-sm font-medium text-slate-800">
-                              {formatTime(slot.start_time)} →{' '}
-                              {formatTime(slot.end_time)}
-                            </span>
-                            <SlotBadge current={current} max={slot.max_volunteers} />
-                            <span className="text-xs text-slate-400">
-                              {current} / {slot.max_volunteers}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant={mine ? 'outline' : 'default'}
-                              size="sm"
-                              onClick={() => void toggleSelfSignup(slot)}
-                              disabled={busy}
-                              aria-busy={busy}
-                            >
-                              {mine
-                                ? 'Me désinscrire'
-                                : isFull
-                                  ? 'Remplaçant'
-                                  : "M'inscrire"}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => openEdit(slot)}
-                              aria-label="Modifier le créneau"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => setToDelete(slot)}
-                              aria-label="Supprimer le créneau"
-                            >
-                              <Trash2 className="h-4 w-4 text-red-600" />
-                            </Button>
-                          </div>
-                        </div>
+            <div className="space-y-4">
+              {/* Aperçu visuel des créneaux du stand */}
+              {openDays.length > 0 && (
+                <Card>
+                  <CardHeader className="flex-row items-center justify-between space-y-0">
+                    <CardTitle className="text-base capitalize">
+                      {selectedStand.name}
+                    </CardTitle>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setAutoGenerateOpen(true)}
+                      aria-label="Autogénérer des créneaux"
+                    >
+                      <Wand2 className="h-4 w-4" />
+                      Autogénérer
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    <StandSlotsPreview
+                      eventRow={event}
+                      daySchedules={daySchedules}
+                      openDays={openDays}
+                      slots={selectedStand.kermesse_slots}
+                      fillRates={fillRates}
+                    />
+                  </CardContent>
+                </Card>
+              )}
 
-                        {participants.length > 0 && (
-                          <div className="flex flex-wrap gap-1 border-t pt-2">
-                            {participants.map((p) => (
-                              <ParticipantChip
-                                key={p.signup_id}
-                                detail={p}
-                                onRemove={() => setToRemove(p)}
-                              />
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })
-                )}
-              </CardContent>
-            </Card>
+              {/* Une section par journée d'ouverture */}
+              {openDays.map((day) => {
+                const slotsForDay = selectedStand.kermesse_slots.filter(
+                  (s) => (s.date ?? '') === day,
+                )
+                return (
+                  <Card key={day}>
+                    <CardHeader className="flex-row items-center justify-between space-y-0">
+                      <CardTitle className="text-base capitalize">
+                        {formatDayShort(day)}
+                      </CardTitle>
+                      <Button size="sm" onClick={() => openCreate(day)}>
+                        <Plus className="h-4 w-4" />
+                        Nouveau créneau
+                      </Button>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {slotsForDay.length === 0 ? (
+                        <p className="py-6 text-center text-sm text-slate-400">
+                          Aucun créneau pour cette journée. Ajoutez-en un.
+                        </p>
+                      ) : (
+                        slotsForDay.map(renderSlot)
+                      )}
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
           )}
         </>
       )}
@@ -317,7 +314,7 @@ export function Slots() {
             open={formOpen}
             slot={editing}
             standId={selectedStand.id}
-            standDate={selectedDay || event.start_date}
+            standDate={editing?.date || createDay || openDays[0] || event.start_date}
             standOpenDays={openDays}
             eventRow={event}
             daySchedules={daySchedules}
@@ -331,7 +328,7 @@ export function Slots() {
           <AutoGenerateSlotsDialog
             open={autoGenerateOpen}
             standId={selectedStand.id}
-            startDay={selectedDay || openDays[0] || event.start_date}
+            startDay={openDays[0] || event.start_date}
             standOpenDays={openDays}
             eventRow={event}
             daySchedules={daySchedules}

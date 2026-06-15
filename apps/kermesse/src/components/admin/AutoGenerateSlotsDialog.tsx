@@ -19,13 +19,11 @@ import {
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { SlotGenerationPreview } from '@/components/admin/SlotGenerationPreview'
 import {
-  resolveOpenTime,
-  resolveCloseTime,
   firstFreeStart,
   generateSlotsAcrossDays,
+  resolveStandDays,
+  eventTimeWindow,
   formatDayShort,
-  formatTime,
-  type OpenDay,
 } from '@/lib/date-utils'
 import type { EventRow, EventDayScheduleRow, SlotRow } from '@/lib/domain'
 import type { TablesInsert } from '@agpe/shared/types/supabase'
@@ -65,15 +63,8 @@ export function AutoGenerateSlotsDialog({
   const [error, setError] = useState<string | null>(null)
 
   // Journées d'ouverture avec leurs horaires applicables.
-  const days = useMemo<OpenDay[]>(
-    () =>
-      standOpenDays
-        .map((date) => ({
-          date,
-          open: resolveOpenTime(eventRow, daySchedules, date) ?? '',
-          close: resolveCloseTime(eventRow, daySchedules, date) ?? '',
-        }))
-        .filter((d) => d.open && d.close && d.close > d.open),
+  const days = useMemo(
+    () => resolveStandDays(eventRow, daySchedules, standOpenDays),
     [standOpenDays, eventRow, daySchedules],
   )
 
@@ -126,13 +117,8 @@ export function AutoGenerateSlotsDialog({
     })
   }, [days, startDate, startTime, count, duration, existingByDate])
 
-  // Bornes de la plage événement pour l'aperçu (fallback sur les plages stand).
-  const eventOpen =
-    formatTime(eventRow.start_time) ||
-    days.reduce((min, d) => (min && min < d.open ? min : d.open), '')
-  const eventClose =
-    formatTime(eventRow.end_time) ||
-    days.reduce((max, d) => (max && max > d.close ? max : d.close), '')
+  // Bornes de la plage événement pour l'aperçu.
+  const { open: eventOpen, close: eventClose } = eventTimeWindow(eventRow, days)
 
   async function doGenerate(): Promise<void> {
     const v = Number.parseInt(maxVolunteers, 10) || 1
@@ -259,8 +245,8 @@ export function AutoGenerateSlotsDialog({
               </p>
               <SlotGenerationPreview
                 days={days}
-                eventOpen={eventOpen || '08:00'}
-                eventClose={eventClose || '20:00'}
+                eventOpen={eventOpen}
+                eventClose={eventClose}
                 existing={existingSlots
                   .filter((s) => s.date)
                   .map((s) => ({
