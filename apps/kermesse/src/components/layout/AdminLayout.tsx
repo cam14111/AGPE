@@ -5,7 +5,6 @@ import {
   CalendarDays,
   ClipboardList,
   Clock,
-  Menu,
   ScrollText,
   ShieldCheck,
   Tent,
@@ -66,7 +65,12 @@ export function AdminLayout() {
             onClick={() => setMenuOpen(true)}
             aria-label="Ouvrir le menu"
           >
-            <Menu className="h-5 w-5" />
+            <img
+              src={`${import.meta.env.BASE_URL}logo-agpe-icon.png`}
+              alt=""
+              aria-hidden="true"
+              className="h-7 w-7 object-contain"
+            />
           </Button>
           <span className="font-semibold text-slate-900">Admin Événements</span>
         </div>

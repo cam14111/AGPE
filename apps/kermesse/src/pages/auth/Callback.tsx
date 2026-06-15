@@ -101,9 +101,12 @@ export function Callback() {
   return (
     <div className="min-h-dvh flex items-center justify-center px-4">
       <div className="max-w-sm w-full text-center space-y-4">
-        <div className="text-4xl" aria-hidden="true">
-          🎪
-        </div>
+        <img
+          src={`${import.meta.env.BASE_URL}logo-agpe-icon.png`}
+          alt=""
+          aria-hidden="true"
+          className="mx-auto h-16 w-16 object-contain"
+        />
         <p className="text-slate-600">Connexion en cours…</p>
         <LoadingSkeleton count={1} />
       </div>
