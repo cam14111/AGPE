@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -9,13 +9,23 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
+import { SlotGenerationPreview } from '@/components/admin/SlotGenerationPreview'
 import {
   resolveOpenTime,
   resolveCloseTime,
-  generateSlotIntervals,
-  timesOverlap,
+  firstFreeStart,
+  generateSlotsAcrossDays,
+  formatDayShort,
   formatTime,
+  type OpenDay,
 } from '@/lib/date-utils'
 import type { EventRow, EventDayScheduleRow, SlotRow } from '@/lib/domain'
 import type { TablesInsert } from '@agpe/shared/types/supabase'
@@ -23,7 +33,8 @@ import type { TablesInsert } from '@agpe/shared/types/supabase'
 interface AutoGenerateSlotsDialogProps {
   open: boolean
   standId: string
-  standDate: string
+  startDay: string
+  standOpenDays: string[]
   eventRow: EventRow
   daySchedules: EventDayScheduleRow[]
   existingSlots: SlotRow[]
@@ -31,135 +42,178 @@ interface AutoGenerateSlotsDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
-// Génère automatiquement N créneaux de durée fixe pour un stand.
+// Génère dynamiquement des créneaux répartis sur les journées d'ouverture du stand,
+// avec un aperçu visuel mis à jour en direct.
 export function AutoGenerateSlotsDialog({
   open,
   standId,
-  standDate,
+  startDay,
+  standOpenDays,
   eventRow,
   daySchedules,
   existingSlots,
   onGenerate,
   onOpenChange,
 }: AutoGenerateSlotsDialogProps) {
+  const [startDate, setStartDate] = useState(startDay)
+  const [startTime, setStartTime] = useState('')
   const [count, setCount] = useState('4')
   const [duration, setDuration] = useState('60')
   const [maxVolunteers, setMaxVolunteers] = useState('1')
   const [saving, setSaving] = useState(false)
-  const [overflowOpen, setOverflowOpen] = useState(false)
-  const [pendingSlots, setPendingSlots] = useState<TablesInsert<'kermesse_slots'>[]>([])
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Journées d'ouverture avec leurs horaires applicables.
+  const days = useMemo<OpenDay[]>(
+    () =>
+      standOpenDays
+        .map((date) => ({
+          date,
+          open: resolveOpenTime(eventRow, daySchedules, date) ?? '',
+          close: resolveCloseTime(eventRow, daySchedules, date) ?? '',
+        }))
+        .filter((d) => d.open && d.close && d.close > d.open),
+    [standOpenDays, eventRow, daySchedules],
+  )
+
+  const existingByDate = useMemo(() => {
+    const map = new Map<string, { start_time: string; end_time: string }[]>()
+    for (const s of existingSlots) {
+      const d = s.date ?? ''
+      const list = map.get(d) ?? []
+      list.push({ start_time: s.start_time, end_time: s.end_time })
+      map.set(d, list)
+    }
+    return map
+  }, [existingSlots])
+
+  // Réinitialise les champs à l'ouverture.
   useEffect(() => {
-    if (open) {
-      setCount('4')
-      setDuration('60')
-      setMaxVolunteers('1')
-      setError(null)
-    }
-  }, [open])
-
-  function buildSlots(): {
-    slots: TablesInsert<'kermesse_slots'>[]
-    overflow: boolean
-  } | null {
-    const n = Number.parseInt(count, 10)
-    const d = Number.parseInt(duration, 10)
-    const v = Number.parseInt(maxVolunteers, 10)
-
-    if (Number.isNaN(n) || n < 1) {
-      setError('Le nombre de créneaux doit être au moins 1.')
-      return null
-    }
-    if (Number.isNaN(d) || d < 1) {
-      setError('La durée doit être au moins 1 minute.')
-      return null
-    }
-    if (Number.isNaN(v) || v < 1) {
-      setError('Le nombre de bénévoles doit être au moins 1.')
-      return null
-    }
-
-    const openTime = resolveOpenTime(eventRow, daySchedules, standDate)
-    if (!openTime) {
-      setError('Aucun horaire d\'ouverture défini pour ce jour.')
-      return null
-    }
-
-    const closeTime = resolveCloseTime(eventRow, daySchedules, standDate)
-    const { slots: intervals, overflow } = generateSlotIntervals(openTime, closeTime, d, n)
-
-    // Filtre les chevauchements avec les créneaux existants.
-    const slotsToCreate = intervals
-      .filter(
-        (interval) =>
-          !existingSlots.some(
-            (ex) =>
-              ex.date === standDate &&
-              timesOverlap(interval.start_time, interval.end_time, ex.start_time, ex.end_time),
-          ),
-      )
-      .map((interval) => ({
-        stand_id: standId,
-        date: standDate,
-        start_time: interval.start_time,
-        end_time: interval.end_time,
-        max_volunteers: v,
-      }))
-
-    return { slots: slotsToCreate, overflow }
-  }
-
-  async function handleSubmit(e: React.FormEvent): Promise<void> {
-    e.preventDefault()
+    if (!open) return
+    setStartDate(startDay)
+    setCount('4')
+    setDuration('60')
+    setMaxVolunteers('1')
     setError(null)
-    const result = buildSlots()
-    if (!result) return
+  }, [open, startDay])
 
-    if (result.overflow) {
-      setPendingSlots(result.slots)
-      setOverflowOpen(true)
-    } else {
-      await doGenerate(result.slots)
-    }
-  }
-
-  async function doGenerate(slots: TablesInsert<'kermesse_slots'>[]): Promise<void> {
-    if (slots.length === 0) {
-      setError('Aucun créneau à créer (tous chevauchent des créneaux existants).')
+  // Préremplit l'heure de début intelligemment au changement de journée.
+  useEffect(() => {
+    if (!open) return
+    const day = days.find((d) => d.date === startDate)
+    if (!day) {
+      setStartTime('')
       return
     }
+    const dur = Number.parseInt(duration, 10) || 60
+    const existing = existingByDate.get(startDate) ?? []
+    setStartTime(firstFreeStart(day.open, day.close, dur, existing) ?? day.open)
+    // Volontairement limité à [open, startDate] : ne pas écraser une saisie manuelle.
+  }, [open, startDate])
+
+  const { generated, shortfall } = useMemo(() => {
+    const n = Number.parseInt(count, 10) || 0
+    const dur = Number.parseInt(duration, 10) || 0
+    if (n < 1 || dur < 1 || !startDate) return { generated: [], shortfall: 0 }
+    return generateSlotsAcrossDays({
+      days,
+      startDate,
+      startTime,
+      duration: dur,
+      count: n,
+      existingByDate,
+    })
+  }, [days, startDate, startTime, count, duration, existingByDate])
+
+  // Bornes de la plage événement pour l'aperçu (fallback sur les plages stand).
+  const eventOpen =
+    formatTime(eventRow.start_time) ||
+    days.reduce((min, d) => (min && min < d.open ? min : d.open), '')
+  const eventClose =
+    formatTime(eventRow.end_time) ||
+    days.reduce((max, d) => (max && max > d.close ? max : d.close), '')
+
+  async function doGenerate(): Promise<void> {
+    const v = Number.parseInt(maxVolunteers, 10) || 1
     setSaving(true)
     try {
-      const ok = await onGenerate(slots)
+      const ok = await onGenerate(
+        generated.map((g) => ({
+          stand_id: standId,
+          date: g.date,
+          start_time: g.start_time,
+          end_time: g.end_time,
+          max_volunteers: v,
+        })),
+      )
       if (ok) onOpenChange(false)
     } finally {
       setSaving(false)
+      setConfirmOpen(false)
     }
   }
 
-  const openTime = resolveOpenTime(eventRow, daySchedules, standDate)
-  const closeTime = resolveCloseTime(eventRow, daySchedules, standDate)
+  function handleSubmit(e: React.FormEvent): void {
+    e.preventDefault()
+    setError(null)
+
+    const v = Number.parseInt(maxVolunteers, 10)
+    if (Number.isNaN(v) || v < 1) {
+      setError('Le nombre de bénévoles doit être au moins 1.')
+      return
+    }
+    if (generated.length === 0) {
+      setError('Aucun créneau ne peut être généré dans les plages disponibles.')
+      return
+    }
+    if (shortfall > 0) {
+      setConfirmOpen(true)
+      return
+    }
+    void doGenerate()
+  }
 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Générer des créneaux automatiquement</DialogTitle>
           </DialogHeader>
 
-          {openTime && (
-            <p className="text-sm text-slate-500">
-              Plage horaire applicable : {formatTime(openTime)}
-              {closeTime ? ` – ${formatTime(closeTime)}` : ''}
-            </p>
-          )}
-
-          <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="gen-count">Nombre de créneaux</Label>
+                <Label htmlFor="gen-start-day">Journée de départ</Label>
+                <Select value={startDate} onValueChange={setStartDate}>
+                  <SelectTrigger id="gen-start-day">
+                    <SelectValue placeholder="Choisir une journée" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {standOpenDays.map((day) => (
+                      <SelectItem key={day} value={day} className="capitalize">
+                        {formatDayShort(day)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="gen-start-time">Heure de début</Label>
+                <Input
+                  id="gen-start-time"
+                  type="time"
+                  required
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="gen-count">Nombre</Label>
                 <Input
                   id="gen-count"
                   type="number"
@@ -170,7 +224,7 @@ export function AutoGenerateSlotsDialog({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="gen-duration">Durée (minutes)</Label>
+                <Label htmlFor="gen-duration">Durée (min)</Label>
                 <Input
                   id="gen-duration"
                   type="number"
@@ -180,16 +234,41 @@ export function AutoGenerateSlotsDialog({
                   onChange={(e) => setDuration(e.target.value)}
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="gen-volunteers">Bénévoles</Label>
+                <Input
+                  id="gen-volunteers"
+                  type="number"
+                  min={1}
+                  required
+                  value={maxVolunteers}
+                  onChange={(e) => setMaxVolunteers(e.target.value)}
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="gen-volunteers">Bénévoles par créneau</Label>
-              <Input
-                id="gen-volunteers"
-                type="number"
-                min={1}
-                required
-                value={maxVolunteers}
-                onChange={(e) => setMaxVolunteers(e.target.value)}
+
+            {/* Aperçu visuel dynamique */}
+            <div className="rounded-md border p-3">
+              <p className="mb-2 text-sm font-medium text-slate-700">
+                Aperçu — {generated.length} créneau{generated.length > 1 ? 'x' : ''} à créer
+                {shortfall > 0 && (
+                  <span className="ml-1 text-amber-600">
+                    ({shortfall} non plaçable{shortfall > 1 ? 's' : ''})
+                  </span>
+                )}
+              </p>
+              <SlotGenerationPreview
+                days={days}
+                eventOpen={eventOpen || '08:00'}
+                eventClose={eventClose || '20:00'}
+                existing={existingSlots
+                  .filter((s) => s.date)
+                  .map((s) => ({
+                    date: s.date as string,
+                    start_time: s.start_time,
+                    end_time: s.end_time,
+                  }))}
+                generated={generated}
               />
             </div>
 
@@ -217,15 +296,13 @@ export function AutoGenerateSlotsDialog({
       </Dialog>
 
       <ConfirmDialog
-        open={overflowOpen}
-        title="Créneaux hors horaires"
-        description="Les créneaux générés dépassent les horaires d'ouverture prévus pour cette journée. Voulez-vous quand même les créer ?"
-        confirmLabel="Créer quand même"
-        onConfirm={async () => {
-          await doGenerate(pendingSlots)
-        }}
+        open={confirmOpen}
+        title="Tous les créneaux ne tiennent pas"
+        description="Tous les créneaux demandés ne peuvent pas être générés dans les plages d'ouverture disponibles de ce stand. Voulez-vous créer uniquement les créneaux possibles ?"
+        confirmLabel="Créer les créneaux possibles"
+        onConfirm={doGenerate}
         onOpenChange={(o) => {
-          if (!o) setOverflowOpen(false)
+          if (!o) setConfirmOpen(false)
         }}
       />
     </>

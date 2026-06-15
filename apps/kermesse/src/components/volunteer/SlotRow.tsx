@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { SlotBadge } from '@/components/volunteer/SlotBadge'
-import { formatTime } from '@/lib/date-utils'
+import { formatTime, formatDayShort } from '@/lib/date-utils'
 import type { SignupStatus, SlotRow as SlotRowType } from '@/lib/domain'
 
 interface SlotRowProps {
@@ -12,6 +12,7 @@ interface SlotRowProps {
   myStatus: SignupStatus | undefined
   overlaps: boolean
   isPastEvent: boolean
+  showDate?: boolean
   onSignup: (slotId: string) => Promise<void>
   onUnsignup: (slotId: string) => Promise<void>
 }
@@ -24,6 +25,7 @@ export function SlotRow({
   myStatus,
   overlaps,
   isPastEvent,
+  showDate,
   onSignup,
   onUnsignup,
 }: SlotRowProps) {
@@ -48,6 +50,11 @@ export function SlotRow({
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-white p-3">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-medium text-slate-800">
+          {showDate && slot.date && (
+            <span className="mr-1 capitalize text-slate-500">
+              {formatDayShort(slot.date)} ·
+            </span>
+          )}
           {formatTime(slot.start_time)} → {formatTime(slot.end_time)}
         </span>
         <SlotBadge current={currentCount} max={slot.max_volunteers} />

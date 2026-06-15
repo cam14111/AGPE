@@ -206,6 +206,34 @@ export interface Database {
           },
         ]
       }
+      kermesse_stand_days: {
+        Row: {
+          id: string
+          stand_id: string
+          date: string
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          stand_id: string
+          date: string
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          stand_id?: string
+          date?: string
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'kermesse_stand_days_stand_id_fkey'
+            columns: ['stand_id']
+            referencedRelation: 'kermesse_stands'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       kermesse_signups: {
         Row: {
           id: string

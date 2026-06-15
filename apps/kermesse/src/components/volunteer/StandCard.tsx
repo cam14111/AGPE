@@ -58,22 +58,27 @@ export function StandCard({
             Aucun créneau pour ce stand pour le moment.
           </p>
         ) : (
-          stand.kermesse_slots.map((slot) => {
-            const fill = fillRates[slot.id]
-            return (
-              <SlotRow
-                key={slot.id}
-                slot={slot}
-                currentCount={fill?.currentCount ?? 0}
-                replacementCount={fill?.replacementCount ?? 0}
-                myStatus={statusBySlot.get(slot.id)}
-                overlaps={overlapsSlot(slot)}
-                isPastEvent={isPastEvent}
-                onSignup={onSignup}
-                onUnsignup={onUnsignup}
-              />
-            )
-          })
+          (() => {
+            const multiDay =
+              new Set(stand.kermesse_slots.map((s) => s.date)).size > 1
+            return stand.kermesse_slots.map((slot) => {
+              const fill = fillRates[slot.id]
+              return (
+                <SlotRow
+                  key={slot.id}
+                  slot={slot}
+                  currentCount={fill?.currentCount ?? 0}
+                  replacementCount={fill?.replacementCount ?? 0}
+                  myStatus={statusBySlot.get(slot.id)}
+                  overlaps={overlapsSlot(slot)}
+                  isPastEvent={isPastEvent}
+                  showDate={multiDay}
+                  onSignup={onSignup}
+                  onUnsignup={onUnsignup}
+                />
+              )
+            })
+          })()
         )}
       </CardContent>
     </Card>

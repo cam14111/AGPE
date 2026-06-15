@@ -26,7 +26,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { formatTime } from '@/lib/date-utils'
+import { formatTime, formatDayShort } from '@/lib/date-utils'
+import { standOpenDays } from '@/lib/domain'
 import { participantLabel } from '@/lib/participant'
 import type { SlotRow } from '@/lib/domain'
 
@@ -49,12 +50,19 @@ export function Slots() {
   })
 
   const [selectedStandId, setSelectedStandId] = useState<string>('')
+  const [selectedDay, setSelectedDay] = useState<string>('')
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<SlotRow | null>(null)
   const [toDelete, setToDelete] = useState<SlotRow | null>(null)
   const [toRemove, setToRemove] = useState<AdminSignupDetail | null>(null)
   const [selfBusySlot, setSelfBusySlot] = useState<string | null>(null)
   const [autoGenerateOpen, setAutoGenerateOpen] = useState(false)
+
+  const selectedStand = stands.find((s) => s.id === selectedStandId) ?? null
+  const openDays = useMemo(
+    () => (selectedStand ? standOpenDays(selectedStand) : []),
+    [selectedStand],
+  )
 
   // Sélectionne le stand via URL param ou le premier par défaut.
   useEffect(() => {
@@ -64,6 +72,13 @@ export function Slots() {
       setSelectedStandId(stands[0]?.id ?? '')
     }
   }, [stands, selectedStandId, queryStandId])
+
+  // Sélectionne la première journée d'ouverture quand le stand change.
+  useEffect(() => {
+    if (openDays.length > 0 && !openDays.includes(selectedDay)) {
+      setSelectedDay(openDays[0] ?? '')
+    }
+  }, [openDays, selectedDay])
 
   async function toggleSelfSignup(slot: SlotRow): Promise<void> {
     if (!user) return
@@ -114,7 +129,10 @@ export function Slots() {
     )
   }
 
-  const selectedStand = stands.find((s) => s.id === selectedStandId) ?? null
+  // Créneaux de la journée sélectionnée (la vue se concentre sur un jour).
+  const slotsForDay = selectedStand
+    ? selectedStand.kermesse_slots.filter((s) => (s.date ?? '') === selectedDay)
+    : []
 
   function openCreate(): void {
     setEditing(null)
@@ -150,29 +168,47 @@ export function Slots() {
         </div>
       ) : (
         <>
-          <div className="mb-4 max-w-xs">
-            <Select value={selectedStandId} onValueChange={setSelectedStandId}>
-              <SelectTrigger aria-label="Choisir un stand">
-                <SelectValue placeholder="Choisir un stand" />
-              </SelectTrigger>
-              <SelectContent>
-                {stands.map((stand) => (
-                  <SelectItem key={stand.id} value={stand.id}>
-                    {(stand.emoji ?? '🎪') + ' ' + stand.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="mb-4 flex flex-wrap gap-3">
+            <div className="max-w-xs flex-1">
+              <Select value={selectedStandId} onValueChange={setSelectedStandId}>
+                <SelectTrigger aria-label="Choisir un stand">
+                  <SelectValue placeholder="Choisir un stand" />
+                </SelectTrigger>
+                <SelectContent>
+                  {stands.map((stand) => (
+                    <SelectItem key={stand.id} value={stand.id}>
+                      {(stand.emoji ?? '🎪') + ' ' + stand.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {openDays.length > 0 && (
+              <div className="max-w-[12rem] flex-1">
+                <Select value={selectedDay} onValueChange={setSelectedDay}>
+                  <SelectTrigger aria-label="Choisir une journée">
+                    <SelectValue placeholder="Choisir une journée" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {openDays.map((day) => (
+                      <SelectItem key={day} value={day} className="capitalize">
+                        {formatDayShort(day)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           {selectedStand && (
             <Card>
               <CardHeader className="flex-row items-center justify-between space-y-0">
-                <CardTitle className="text-base">
-                  Créneaux — {selectedStand.name}
-                  {selectedStand.date && (
+                <CardTitle className="text-base capitalize">
+                  {selectedStand.name}
+                  {selectedDay && (
                     <span className="ml-2 text-sm font-normal text-slate-500">
-                      ({selectedStand.date})
+                      — {formatDayShort(selectedDay)}
                     </span>
                   )}
                 </CardTitle>
@@ -193,12 +229,12 @@ export function Slots() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-2">
-                {selectedStand.kermesse_slots.length === 0 ? (
+                {slotsForDay.length === 0 ? (
                   <p className="py-6 text-center text-sm text-slate-400">
-                    Aucun créneau pour ce stand. Ajoutez-en un.
+                    Aucun créneau pour cette journée. Ajoutez-en un.
                   </p>
                 ) : (
-                  selectedStand.kermesse_slots.map((slot) => {
+                  slotsForDay.map((slot) => {
                     const fill = fillRates[slot.id]
                     const current = fill?.currentCount ?? 0
                     const participants = participantsBySlot.get(slot.id) ?? []
@@ -213,11 +249,6 @@ export function Slots() {
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div className="flex items-center gap-3">
                             <span className="text-sm font-medium text-slate-800">
-                              {slot.date && slot.date !== selectedStand.date && (
-                                <span className="mr-1 text-xs text-slate-400">
-                                  {slot.date}
-                                </span>
-                              )}
                               {formatTime(slot.start_time)} →{' '}
                               {formatTime(slot.end_time)}
                             </span>
@@ -286,7 +317,8 @@ export function Slots() {
             open={formOpen}
             slot={editing}
             standId={selectedStand.id}
-            standDate={selectedStand.date ?? event.start_date}
+            standDate={selectedDay || event.start_date}
+            standOpenDays={openDays}
             eventRow={event}
             daySchedules={daySchedules}
             existingSlots={selectedStand.kermesse_slots}
@@ -299,7 +331,8 @@ export function Slots() {
           <AutoGenerateSlotsDialog
             open={autoGenerateOpen}
             standId={selectedStand.id}
-            standDate={selectedStand.date ?? event.start_date}
+            startDay={selectedDay || openDays[0] || event.start_date}
+            standOpenDays={openDays}
             eventRow={event}
             daySchedules={daySchedules}
             existingSlots={selectedStand.kermesse_slots}

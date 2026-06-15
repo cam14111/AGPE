@@ -25,7 +25,7 @@ export function useStands(eventId: string | null): UseStandsResult {
     setError(null)
     const { data, error: err } = await supabase
       .from('kermesse_stands')
-      .select('*, kermesse_slots(*)')
+      .select('*, kermesse_slots(*), kermesse_stand_days(date)')
       .eq('event_id', eventId)
       .order('name', { ascending: true })
 
@@ -40,6 +40,7 @@ export function useStands(eventId: string | null): UseStandsResult {
           if (dateCmp !== 0) return dateCmp
           return a.start_time.localeCompare(b.start_time)
         }),
+        kermesse_stand_days: stand.kermesse_stand_days ?? [],
       }))
       setStands(sorted)
     }

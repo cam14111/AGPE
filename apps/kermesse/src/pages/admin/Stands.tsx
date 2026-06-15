@@ -4,25 +4,16 @@ import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { useActiveEvent, useEventById } from '@/hooks/useActiveEvent'
 import { useStands } from '@/hooks/useStands'
 import { useStandMutations } from '@/hooks/useStandMutations'
-import { useSlotMutations } from '@/hooks/useSlotMutations'
-import { useEventDaySchedules } from '@/hooks/useEventDaySchedules'
 import { StandForm } from '@/components/admin/StandForm'
 import { PostCreationDialog } from '@/components/admin/PostCreationDialog'
-import { AutoGenerateSlotsDialog } from '@/components/admin/AutoGenerateSlotsDialog'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton'
 import { ErrorMessage } from '@/components/shared/ErrorMessage'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import type { StandRow } from '@/lib/domain'
-
-interface AutoGenerateState {
-  standId: string
-  standDate: string
-  count: number
-  duration: number
-}
+import { formatDayShort } from '@/lib/date-utils'
+import { standOpenDays, type StandWithSlots } from '@/lib/domain'
 
 export function Stands() {
   const navigate = useNavigate()
@@ -38,14 +29,11 @@ export function Stands() {
 
   const { stands, loading, error, refetch } = useStands(eventId)
   const { createStand, updateStand, deleteStand } = useStandMutations(refetch)
-  const { createSlots } = useSlotMutations(refetch)
-  const { schedules: daySchedules } = useEventDaySchedules(eventId)
 
   const [formOpen, setFormOpen] = useState(false)
-  const [editing, setEditing] = useState<StandRow | null>(null)
-  const [toDelete, setToDelete] = useState<StandRow | null>(null)
+  const [editing, setEditing] = useState<StandWithSlots | null>(null)
+  const [toDelete, setToDelete] = useState<StandWithSlots | null>(null)
   const [postCreationStandId, setPostCreationStandId] = useState<string | null>(null)
-  const [autoGenerate, setAutoGenerate] = useState<AutoGenerateState | null>(null)
 
   if (eventLoading) return <LoadingSkeleton />
 
@@ -72,14 +60,10 @@ export function Stands() {
     setFormOpen(true)
   }
 
-  function openEdit(stand: StandRow): void {
+  function openEdit(stand: StandWithSlots): void {
     setEditing(stand)
     setFormOpen(true)
   }
-
-  const autoGenerateStand = autoGenerate
-    ? stands.find((s) => s.id === autoGenerate.standId) ?? null
-    : null
 
   return (
     <div>
@@ -107,46 +91,50 @@ export function Stands() {
         </div>
       ) : (
         <div className="space-y-3">
-          {stands.map((stand) => (
-            <Card key={stand.id}>
-              <CardContent className="flex flex-wrap items-center justify-between gap-4 p-4">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl" aria-hidden="true">
-                    {stand.emoji ?? '🎪'}
-                  </span>
-                  <div>
-                    <h2 className="text-base font-semibold text-slate-800">
-                      {stand.name}
-                    </h2>
-                    <p className="text-xs text-slate-400">
-                      {stand.kermesse_slots.length} créneau
-                      {stand.kermesse_slots.length > 1 ? 'x' : ''}
-                      {stand.date ? ` · ${stand.date}` : ''}
-                      {stand.location_detail ? ` · ${stand.location_detail}` : ''}
-                    </p>
+          {stands.map((stand) => {
+            const days = standOpenDays(stand)
+            const daysLabel = days.map(formatDayShort).join(', ')
+            return (
+              <Card key={stand.id}>
+                <CardContent className="flex flex-wrap items-center justify-between gap-4 p-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl" aria-hidden="true">
+                      {stand.emoji ?? '🎪'}
+                    </span>
+                    <div>
+                      <h2 className="text-base font-semibold text-slate-800">
+                        {stand.name}
+                      </h2>
+                      <p className="text-xs text-slate-400">
+                        {stand.kermesse_slots.length} créneau
+                        {stand.kermesse_slots.length > 1 ? 'x' : ''}
+                        {daysLabel ? ` · ${daysLabel}` : ''}
+                        {stand.location_detail ? ` · ${stand.location_detail}` : ''}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => openEdit(stand)}
-                    aria-label={`Modifier ${stand.name}`}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setToDelete(stand)}
-                    aria-label={`Supprimer ${stand.name}`}
-                  >
-                    <Trash2 className="h-4 w-4 text-red-600" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => openEdit(stand)}
+                      aria-label={`Modifier ${stand.name}`}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setToDelete(stand)}
+                      aria-label={`Supprimer ${stand.name}`}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-600" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       )}
 
@@ -157,9 +145,9 @@ export function Stands() {
         eventStartDate={event.start_date}
         eventEndDate={event.end_date}
         onOpenChange={setFormOpen}
-        onSubmit={async (values) => {
-          if (editing) return updateStand(editing.id, values)
-          const id = await createStand(values)
+        onSubmit={async (values, openDays) => {
+          if (editing) return updateStand(editing.id, values, openDays)
+          const id = await createStand(values, openDays)
           if (id !== null) {
             setPostCreationStandId(id)
             return true
@@ -167,17 +155,6 @@ export function Stands() {
           return false
         }}
         onCreated={() => setFormOpen(false)}
-        onAutoGenerate={(config) => {
-          if (postCreationStandId) {
-            setAutoGenerate({
-              standId: postCreationStandId,
-              standDate: config.standDate,
-              count: config.count,
-              duration: config.duration,
-            })
-            setPostCreationStandId(null)
-          }
-        }}
       />
 
       <PostCreationDialog
@@ -185,24 +162,9 @@ export function Stands() {
         title="Stand créé !"
         actions={[
           {
-            label: 'Créer les créneaux de ce stand',
+            label: 'Gérer les créneaux de ce stand',
             onClick: () => {
               navigate(`/admin/slots?standId=${postCreationStandId}`)
-              setPostCreationStandId(null)
-            },
-          },
-          {
-            label: 'Générer des créneaux automatiquement',
-            onClick: () => {
-              const stand = stands.find((s) => s.id === postCreationStandId)
-              if (postCreationStandId) {
-                setAutoGenerate({
-                  standId: postCreationStandId,
-                  standDate: stand?.date ?? event.start_date,
-                  count: 4,
-                  duration: 60,
-                })
-              }
               setPostCreationStandId(null)
             },
           },
@@ -224,21 +186,6 @@ export function Stands() {
           if (!o) setPostCreationStandId(null)
         }}
       />
-
-      {autoGenerate && (
-        <AutoGenerateSlotsDialog
-          open={true}
-          standId={autoGenerate.standId}
-          standDate={autoGenerate.standDate}
-          eventRow={event}
-          daySchedules={daySchedules}
-          existingSlots={autoGenerateStand?.kermesse_slots ?? []}
-          onGenerate={createSlots}
-          onOpenChange={(o) => {
-            if (!o) setAutoGenerate(null)
-          }}
-        />
-      )}
 
       <ConfirmDialog
         open={toDelete !== null}

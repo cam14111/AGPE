@@ -9,11 +9,19 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import {
-  isDateInRange,
   resolveOpenTime,
   resolveCloseTime,
+  firstFreeStart,
+  formatDayShort,
   timesOverlap,
 } from '@/lib/date-utils'
 import type { SlotRow, EventRow, EventDayScheduleRow } from '@/lib/domain'
@@ -26,13 +34,14 @@ interface SlotFormValues {
   max_volunteers: string
 }
 
-type ConfirmStep = 'stand_date' | 'event_range' | 'hours' | null
+type ConfirmStep = 'stand_days' | 'hours' | 'overlap'
 
 interface SlotFormProps {
   open: boolean
   slot: SlotRow | null
   standId: string
   standDate: string
+  standOpenDays: string[]
   eventRow: EventRow
   daySchedules: EventDayScheduleRow[]
   existingSlots: SlotRow[]
@@ -40,60 +49,83 @@ interface SlotFormProps {
   onSubmit: (values: TablesInsert<'kermesse_slots'>) => Promise<boolean>
 }
 
-function toForm(slot: SlotRow | null, standDate: string): SlotFormValues {
-  return {
-    date: slot?.date ?? standDate,
-    start_time: slot?.start_time?.slice(0, 5) ?? '',
-    end_time: slot?.end_time?.slice(0, 5) ?? '',
-    max_volunteers: slot ? String(slot.max_volunteers) : '1',
-  }
+const CONFIRM_MESSAGES: Record<ConfirmStep, { title: string; description: string }> = {
+  stand_days: {
+    title: 'Hors dates d\'ouverture du stand',
+    description:
+      'Attention, ce créneau est en dehors des dates d\'ouverture du stand. Voulez-vous quand même continuer ?',
+  },
+  hours: {
+    title: 'Hors plage d\'ouverture',
+    description:
+      'Attention, ce créneau est en dehors de la plage d\'ouverture du stand. Voulez-vous quand même continuer ?',
+  },
+  overlap: {
+    title: 'Chevauchement de créneaux',
+    description:
+      'Attention, ce créneau chevauche un créneau déjà existant pour ce stand. Voulez-vous quand même continuer ?',
+  },
 }
 
-// Modale de création / édition d'un créneau avec date, préremplissage et validations.
+// Modale de création / édition d'un créneau avec date limitée aux jours d'ouverture,
+// préremplissage intelligent et avertissements confirmables.
 export function SlotForm({
   open,
   slot,
   standId,
   standDate,
+  standOpenDays,
   eventRow,
   daySchedules,
   existingSlots,
   onOpenChange,
   onSubmit,
 }: SlotFormProps) {
-  const [values, setValues] = useState<SlotFormValues>(toForm(slot, standDate))
+  const [values, setValues] = useState<SlotFormValues>({
+    date: standDate,
+    start_time: '',
+    end_time: '',
+    max_volunteers: '1',
+  })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [confirmStep, setConfirmStep] = useState<ConfirmStep>(null)
+  const [pendingSteps, setPendingSteps] = useState<ConfirmStep[]>([])
   const [pendingValues, setPendingValues] = useState<TablesInsert<'kermesse_slots'> | null>(null)
 
-  const isCreating = slot === null
+  // Options de date : jours d'ouverture (+ date du créneau en édition si hors liste).
+  const dateOptions = [...standOpenDays]
+  if (slot?.date && !dateOptions.includes(slot.date)) dateOptions.unshift(slot.date)
 
   useEffect(() => {
     if (!open) return
     setError(null)
-    setConfirmStep(null)
+    setPendingSteps([])
+    setPendingValues(null)
 
     if (slot) {
-      setValues(toForm(slot, standDate))
+      setValues({
+        date: slot.date ?? standDate,
+        start_time: slot.start_time?.slice(0, 5) ?? '',
+        end_time: slot.end_time?.slice(0, 5) ?? '',
+        max_volunteers: String(slot.max_volunteers),
+      })
       return
     }
 
-    // Préremplissage intelligent pour la création.
+    // Préremplissage intelligent (création) : 1re plage libre du jour.
     const date = standDate
-    const slotsForDate = existingSlots.filter((s) => s.date === date)
-
-    let startTime = resolveOpenTime(eventRow, daySchedules, date) ?? ''
-
-    if (slotsForDate.length > 0) {
-      // Heure de fin du dernier créneau existant.
-      const maxEnd = slotsForDate.reduce(
-        (max, s) => (s.end_time > max ? s.end_time : max),
-        '',
-      )
-      if (maxEnd) startTime = maxEnd.slice(0, 5)
+    const openT = resolveOpenTime(eventRow, daySchedules, date)
+    const closeT = resolveCloseTime(eventRow, daySchedules, date)
+    const existingForDate = existingSlots.filter((s) => (s.date ?? '') === date)
+    const lastEnd = existingForDate.reduce(
+      (max, s) => (s.end_time.slice(0, 5) > max ? s.end_time.slice(0, 5) : max),
+      '',
+    )
+    let startTime = ''
+    if (openT && closeT) {
+      startTime =
+        firstFreeStart(openT, closeT, 0, existingForDate, lastEnd || undefined) ?? openT
     }
-
     setValues({ date, start_time: startTime, end_time: '', max_volunteers: '1' })
   }, [open, slot, standDate, eventRow, daySchedules, existingSlots])
 
@@ -111,49 +143,38 @@ export function SlotForm({
     }
   }
 
-  // Effectue la soumission finale après toutes les confirmations.
-  async function doSubmit(): Promise<void> {
-    if (!pendingValues) return
+  // Calcule les avertissements applicables, dans l'ordre.
+  function computeSteps(): ConfirmStep[] {
+    const { date, start_time: start, end_time: end } = values
+    const steps: ConfirmStep[] = []
+
+    if (!standOpenDays.includes(date)) steps.push('stand_days')
+
+    const openT = resolveOpenTime(eventRow, daySchedules, date)
+    const closeT = resolveCloseTime(eventRow, daySchedules, date)
+    if ((openT && start < openT) || (closeT && end > closeT)) steps.push('hours')
+
+    const overlaps = existingSlots.some(
+      (ex) =>
+        ex.id !== slot?.id &&
+        (ex.date ?? '') === date &&
+        timesOverlap(start, end, ex.start_time, ex.end_time),
+    )
+    if (overlaps) steps.push('overlap')
+
+    return steps
+  }
+
+  async function doSubmit(payload: TablesInsert<'kermesse_slots'>): Promise<void> {
     setSaving(true)
     try {
-      const ok = await onSubmit(pendingValues)
+      const ok = await onSubmit(payload)
       if (ok) onOpenChange(false)
     } finally {
       setSaving(false)
-      setConfirmStep(null)
+      setPendingSteps([])
       setPendingValues(null)
     }
-  }
-
-  // Avance à l'étape de confirmation suivante, ou soumet si tout est validé.
-  async function proceedFromStep(step: ConfirmStep): Promise<void> {
-    if (!pendingValues) return
-
-    const date = pendingValues.date ?? standDate
-    const start = pendingValues.start_time
-    const end = pendingValues.end_time
-
-    if (step === 'stand_date') {
-      // Vérifie maintenant la plage de l'événement.
-      const inRange = isDateInRange(date, eventRow.start_date, eventRow.end_date)
-      if (!inRange) {
-        setConfirmStep('event_range')
-        return
-      }
-    }
-
-    if (step === 'stand_date' || step === 'event_range') {
-      // Vérifie les horaires.
-      const open = resolveOpenTime(eventRow, daySchedules, date)
-      const close = resolveCloseTime(eventRow, daySchedules, date)
-      if ((open && start < open) || (close && end > close)) {
-        setConfirmStep('hours')
-        return
-      }
-    }
-
-    // Toutes les confirmations passées : on soumet.
-    await doSubmit()
   }
 
   async function handleSubmit(e: React.FormEvent): Promise<void> {
@@ -170,78 +191,27 @@ export function SlotForm({
       return
     }
 
-    const date = values.date || standDate
-
-    // Vérifie chevauchement (erreur bloquante, pas de confirmation).
-    if (isCreating) {
-      const overlaps = existingSlots.some(
-        (ex) =>
-          ex.id !== slot &&
-          ex.date === date &&
-          timesOverlap(values.start_time, values.end_time, ex.start_time, ex.end_time),
-      )
-      if (overlaps) {
-        setError(
-          'Ce créneau chevauche un créneau déjà existant pour ce stand. Modifiez les horaires.',
-        )
-        return
-      }
-    }
-
     const payload = buildPayload()
+    const steps = computeSteps()
+    if (steps.length === 0) {
+      await doSubmit(payload)
+      return
+    }
     setPendingValues(payload)
-
-    // Étape 1 : date différente de celle du stand ?
-    if (isCreating && values.date !== standDate) {
-      setConfirmStep('stand_date')
-      return
-    }
-
-    // Étape 2 : date hors période de l'événement ?
-    const inRange = isDateInRange(date, eventRow.start_date, eventRow.end_date)
-    if (!inRange) {
-      setConfirmStep('event_range')
-      return
-    }
-
-    // Étape 3 : horaires hors plage applicable ?
-    const openT = resolveOpenTime(eventRow, daySchedules, date)
-    const closeT = resolveCloseTime(eventRow, daySchedules, date)
-    if ((openT && values.start_time < openT) || (closeT && values.end_time > closeT)) {
-      setConfirmStep('hours')
-      return
-    }
-
-    // Aucun avertissement : on soumet directement.
-    setSaving(true)
-    try {
-      const ok = await onSubmit(payload)
-      if (ok) onOpenChange(false)
-    } finally {
-      setSaving(false)
-    }
+    setPendingSteps(steps)
   }
 
-  const confirmMessages: Record<
-    NonNullable<ConfirmStep>,
-    { title: string; description: string }
-  > = {
-    stand_date: {
-      title: 'Date différente du stand',
-      description:
-        'Ce créneau est en dehors de la date d\'ouverture du stand. Voulez-vous quand même continuer ?',
-    },
-    event_range: {
-      title: 'Date hors période de l\'événement',
-      description:
-        'Ce créneau est en dehors de la période de l\'événement. Voulez-vous quand même continuer ?',
-    },
-    hours: {
-      title: 'Horaires hors plage autorisée',
-      description:
-        'Ce créneau est en dehors des horaires d\'ouverture prévus pour cette journée de l\'événement. Voulez-vous quand même continuer ?',
-    },
+  // Confirme l'étape courante : passe à la suivante ou soumet.
+  async function confirmCurrentStep(): Promise<void> {
+    const remaining = pendingSteps.slice(1)
+    if (remaining.length > 0) {
+      setPendingSteps(remaining)
+      return
+    }
+    if (pendingValues) await doSubmit(pendingValues)
   }
+
+  const currentStep = pendingSteps[0] ?? null
 
   return (
     <>
@@ -253,13 +223,18 @@ export function SlotForm({
           <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="slot-date">Date</Label>
-              <Input
-                id="slot-date"
-                type="date"
-                required
-                value={values.date}
-                onChange={(e) => update('date', e.target.value)}
-              />
+              <Select value={values.date} onValueChange={(v) => update('date', v)}>
+                <SelectTrigger id="slot-date">
+                  <SelectValue placeholder="Choisir une journée" />
+                </SelectTrigger>
+                <SelectContent>
+                  {dateOptions.map((day) => (
+                    <SelectItem key={day} value={day} className="capitalize">
+                      {formatDayShort(day)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -317,18 +292,16 @@ export function SlotForm({
         </DialogContent>
       </Dialog>
 
-      {confirmStep && (
+      {currentStep && (
         <ConfirmDialog
-          open={confirmStep !== null}
-          title={confirmMessages[confirmStep].title}
-          description={confirmMessages[confirmStep].description}
+          open={currentStep !== null}
+          title={CONFIRM_MESSAGES[currentStep].title}
+          description={CONFIRM_MESSAGES[currentStep].description}
           confirmLabel="Continuer"
-          onConfirm={async () => {
-            await proceedFromStep(confirmStep)
-          }}
+          onConfirm={confirmCurrentStep}
           onOpenChange={(o) => {
             if (!o) {
-              setConfirmStep(null)
+              setPendingSteps([])
               setPendingValues(null)
             }
           }}

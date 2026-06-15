@@ -19,6 +19,16 @@ export function isEventPast(eventDate: string): boolean {
   return target.getTime() < today.getTime()
 }
 
+// Formate une date ISO (YYYY-MM-DD) en libellé court : "samedi 27".
+export function formatDayShort(date: string): string {
+  const [y, m, d] = date.split('-').map(Number)
+  if (y === undefined || m === undefined || d === undefined) return date
+  return new Intl.DateTimeFormat('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+  }).format(new Date(y, m - 1, d))
+}
+
 // Formate une date ISO (YYYY-MM-DD) en français lisible : "samedi 14 juin 2026".
 export function formatEventDate(eventDate: string): string {
   const parts = eventDate.split('-').map(Number)
@@ -165,4 +175,106 @@ export function generateSlotIntervals(
   }
 
   return { slots: result, overflow }
+}
+
+interface TimeRange {
+  start_time: string
+  end_time: string
+}
+
+// Calcule les plages libres d'une journée entre [open, close] (format "HH:MM"),
+// en excluant les créneaux existants. Les heures existantes sont normalisées en
+// "HH:MM" et bornées à la fenêtre d'ouverture.
+export function computeFreeIntervals(
+  open: string,
+  close: string,
+  existing: TimeRange[],
+): Array<{ start: string; end: string }> {
+  const sorted = existing
+    .map((e) => ({ start: e.start_time.slice(0, 5), end: e.end_time.slice(0, 5) }))
+    .filter((e) => e.end > open && e.start < close)
+    .sort((a, b) => a.start.localeCompare(b.start))
+
+  const free: Array<{ start: string; end: string }> = []
+  let cursor = open
+  for (const e of sorted) {
+    const es = e.start < open ? open : e.start
+    const ee = e.end > close ? close : e.end
+    if (es > cursor) free.push({ start: cursor, end: es })
+    if (ee > cursor) cursor = ee
+  }
+  if (cursor < close) free.push({ start: cursor, end: close })
+  return free
+}
+
+// Première heure de début libre >= `from` (ou l'ouverture) où un créneau de
+// `duration` minutes tient dans une plage libre. `duration` = 0 pour ignorer la
+// contrainte de durée (préremplissage simple). Retourne null si rien ne tient.
+export function firstFreeStart(
+  open: string,
+  close: string,
+  duration: number,
+  existing: TimeRange[],
+  from?: string,
+): string | null {
+  const lower = from && from > open ? from : open
+  for (const itv of computeFreeIntervals(open, close, existing)) {
+    const start = itv.start < lower ? lower : itv.start
+    if (start >= itv.end) continue
+    if (addMinutes(start, duration) <= itv.end) return start
+  }
+  return null
+}
+
+export interface OpenDay {
+  date: string
+  open: string
+  close: string
+}
+
+export interface GeneratedSlot {
+  date: string
+  start_time: string
+  end_time: string
+}
+
+// Répartit dynamiquement `count` créneaux de `duration` minutes sur les journées
+// d'ouverture du stand, dans l'ordre chronologique, à partir de (startDate,
+// startTime). Contourne les créneaux existants (reprend après eux) et passe
+// automatiquement à la journée suivante. `shortfall` = créneaux non placés.
+export function generateSlotsAcrossDays(params: {
+  days: OpenDay[]
+  startDate: string
+  startTime: string
+  duration: number
+  count: number
+  existingByDate: Map<string, TimeRange[]>
+}): { generated: GeneratedSlot[]; shortfall: number } {
+  const { days, startDate, startTime, duration, count, existingByDate } = params
+  const generated: GeneratedSlot[] = []
+
+  const orderedDays = [...days]
+    .filter((d) => d.date >= startDate)
+    .sort((a, b) => a.date.localeCompare(b.date))
+
+  for (const day of orderedDays) {
+    if (generated.length >= count) break
+    const lower =
+      day.date === startDate && startTime && startTime > day.open
+        ? startTime
+        : day.open
+    const existing = existingByDate.get(day.date) ?? []
+
+    for (const itv of computeFreeIntervals(day.open, day.close, existing)) {
+      if (generated.length >= count) break
+      let cursor = itv.start < lower ? lower : itv.start
+      while (generated.length < count && addMinutes(cursor, duration) <= itv.end) {
+        const end = addMinutes(cursor, duration)
+        generated.push({ date: day.date, start_time: cursor, end_time: end })
+        cursor = end
+      }
+    }
+  }
+
+  return { generated, shortfall: count - generated.length }
 }

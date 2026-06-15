@@ -102,7 +102,6 @@ export function EventForm({
         }
       }),
     )
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [values.start_date, values.end_date])
 
   function update(field: keyof EventFormValues, value: string): void {
