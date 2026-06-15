@@ -16,7 +16,12 @@ export function VolunteerLayout() {
       <header className="sticky top-0 z-30 bg-white border-b">
         <div className="mx-auto max-w-2xl flex items-center justify-between px-4 h-14">
           <div className="flex items-center gap-2 font-semibold text-slate-900">
-            <span aria-hidden="true">🎪</span>
+            <img
+              src={`${import.meta.env.BASE_URL}logo-agpe-icon.png`}
+              alt=""
+              aria-hidden="true"
+              className="h-8 w-8 object-contain"
+            />
             <span>Événements AGPE</span>
           </div>
           <AccountMenu />

@@ -76,7 +76,12 @@ export function AdminLayout() {
       {/* Sidebar desktop */}
       <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:w-64 md:border-r md:bg-white md:p-4">
         <div className="mb-6 flex items-center gap-2 px-3 font-semibold text-slate-900">
-          <span aria-hidden="true">🎪</span>
+          <img
+            src={`${import.meta.env.BASE_URL}logo-agpe-icon.png`}
+            alt=""
+            aria-hidden="true"
+            className="h-8 w-8 object-contain"
+          />
           <span>AGPE</span>
         </div>
         <NavList />

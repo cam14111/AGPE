@@ -62,12 +62,14 @@ export function Login() {
     <div className="min-h-dvh flex items-center justify-center bg-slate-50 px-4 py-12">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <div className="text-4xl mb-2" aria-hidden="true">
-            🎪
-          </div>
+          <img
+            src={`${import.meta.env.BASE_URL}logo-agpe-banner.jpg`}
+            alt="AGPE — Association Géniale des Parents d'Élèves"
+            className="mx-auto mb-3 w-full max-w-[280px] rounded-md"
+          />
           <CardTitle className="text-xl">Connexion bénévole</CardTitle>
           <CardDescription>
-            Événements AGPE — connectez-vous avec votre compte Google.
+            Connectez-vous avec votre compte Google.
           </CardDescription>
         </CardHeader>
         <CardContent>
