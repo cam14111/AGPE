@@ -42,3 +42,15 @@ export function formatTime(time: string | null): string {
   if (!time) return ''
   return time.slice(0, 5)
 }
+
+// Vrai si deux intervalles horaires se chevauchent (comparaison lexicale des
+// heures "HH:MM[:SS]", valides car même format). Les créneaux adjacents ne se
+// chevauchent pas (a.end == b.start est autorisé).
+export function timesOverlap(
+  aStart: string,
+  aEnd: string,
+  bStart: string,
+  bEnd: string,
+): boolean {
+  return aStart < bEnd && aEnd > bStart
+}

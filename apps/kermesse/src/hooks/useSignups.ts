@@ -2,9 +2,10 @@ import { useCallback } from 'react'
 import { toast } from 'sonner'
 import { supabase } from '@agpe/shared/supabase-client'
 import { useAuth } from '@agpe/shared/auth/useAuth'
+import type { SignupStatus } from '@/lib/domain'
 
 interface UseSignupsResult {
-  signUp: (slotId: string) => Promise<boolean>
+  signUp: (slotId: string) => Promise<SignupStatus | null>
   unsignUp: (slotId: string) => Promise<boolean>
 }
 
@@ -14,19 +15,21 @@ export function useSignups(): UseSignupsResult {
   const { user } = useAuth()
 
   const signUp = useCallback(
-    async (slotId: string): Promise<boolean> => {
+    async (slotId: string): Promise<SignupStatus | null> => {
       if (!user) {
         toast.error('Vous devez être connecté pour vous inscrire.')
-        return false
+        return null
       }
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('kermesse_signups')
         .insert({ slot_id: slotId, user_id: user.id })
+        .select('status')
+        .single()
 
       if (error) {
-        if (error.message.includes('Créneau complet')) {
+        if (error.message.includes('Chevauchement')) {
           toast.error(
-            'Ce créneau vient d\'être complet. Choisissez-en un autre.',
+            'Ce créneau chevauche un autre de vos créneaux. Désinscrivez-vous de l\'autre d\'abord.',
           )
         } else if (error.code === '23505') {
           toast.warning('Vous êtes déjà inscrit sur ce créneau.')
@@ -34,10 +37,14 @@ export function useSignups(): UseSignupsResult {
           toast.error('Une erreur est survenue. Réessayez dans quelques instants.')
           console.error('[kermesse] signup error:', error)
         }
-        return false
+        return null
       }
-      toast.success('Inscription confirmée ✓')
-      return true
+      if (data.status === 'replacement') {
+        toast.success('Ajouté comme remplaçant ✓')
+      } else {
+        toast.success('Inscription confirmée ✓')
+      }
+      return data.status
     },
     [user],
   )

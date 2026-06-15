@@ -15,6 +15,7 @@ export interface AdminSignupDetail {
   slot_id: string
   start_time: string
   end_time: string
+  status: 'reserved' | 'replacement'
 }
 
 interface UseAdminSignupsResult {

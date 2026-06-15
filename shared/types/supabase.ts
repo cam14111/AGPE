@@ -166,18 +166,21 @@ export interface Database {
           id: string
           slot_id: string
           user_id: string
+          status: 'reserved' | 'replacement'
           created_at: string | null
         }
         Insert: {
           id?: string
           slot_id: string
           user_id: string
+          status?: 'reserved' | 'replacement'
           created_at?: string | null
         }
         Update: {
           id?: string
           slot_id?: string
           user_id?: string
+          status?: 'reserved' | 'replacement'
           created_at?: string | null
         }
         Relationships: [
@@ -224,6 +227,7 @@ export interface Database {
           current_count: number
           remaining: number
           is_full: boolean
+          replacement_count: number
         }[]
       }
       kermesse_bootstrap_admin: {
@@ -262,6 +266,7 @@ export interface Database {
           slot_id: string
           start_time: string
           end_time: string
+          status: 'reserved' | 'replacement'
         }[]
       }
     }

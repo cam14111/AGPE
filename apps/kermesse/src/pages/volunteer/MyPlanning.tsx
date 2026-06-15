@@ -4,6 +4,7 @@ import { useMySignups, type MySignup } from '@/hooks/useMySignups'
 import { useSignups } from '@/hooks/useSignups'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton'
 import { ErrorMessage } from '@/components/shared/ErrorMessage'
@@ -81,9 +82,20 @@ export function MyPlanning() {
                       key={s.id}
                       className="flex items-center justify-between gap-3 rounded-md border bg-white p-3"
                     >
-                      <span className="text-sm font-medium text-slate-800">
-                        {formatTime(s.startTime)} → {formatTime(s.endTime)}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-slate-800">
+                          {formatTime(s.startTime)} → {formatTime(s.endTime)}
+                        </span>
+                        {s.status === 'replacement' ? (
+                          <Badge className="bg-amber-100 text-amber-700 border-amber-200">
+                            Remplaçant
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">
+                            Réservé
+                          </Badge>
+                        )}
+                      </div>
                       {!past && (
                         <Button
                           variant="outline"

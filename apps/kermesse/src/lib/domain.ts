@@ -11,10 +11,13 @@ export interface StandWithSlots extends StandRow {
   kermesse_slots: SlotRow[]
 }
 
+export type SignupStatus = 'reserved' | 'replacement'
+
 // Taux de remplissage normalisé, indexé par slot_id.
 export interface FillRate {
   currentCount: number
   maxVolunteers: number
   remaining: number
   isFull: boolean
+  replacementCount: number
 }

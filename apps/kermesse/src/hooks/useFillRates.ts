@@ -33,6 +33,7 @@ export function useFillRates(): UseFillRatesResult {
           maxVolunteers: row.max_volunteers ?? 0,
           remaining: row.remaining ?? 0,
           isFull: row.is_full ?? false,
+          replacementCount: row.replacement_count ?? 0,
         }
       }
       setFillRates(map)

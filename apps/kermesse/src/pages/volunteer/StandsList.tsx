@@ -7,7 +7,13 @@ import { useSignups } from '@/hooks/useSignups'
 import { StandCard } from '@/components/volunteer/StandCard'
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton'
 import { ErrorMessage } from '@/components/shared/ErrorMessage'
-import { formatEventDate, formatTime, isEventPast } from '@/lib/date-utils'
+import {
+  formatEventDate,
+  formatTime,
+  isEventPast,
+  timesOverlap,
+} from '@/lib/date-utils'
+import type { SlotRow } from '@/lib/domain'
 
 export function StandsList() {
   const { user } = useAuth()
@@ -17,10 +23,21 @@ export function StandsList() {
   const { stands, loading: standsLoading, error: standsError, refetch: refetchStands } =
     useStands(eventId)
   const { fillRates, refetch: refetchFillRates } = useFillRates()
-  const { signedUpSlotIds, refetch: refetchMySignups } = useMySignups(
-    user?.id ?? null,
-  )
+  const {
+    signups: mySignups,
+    statusBySlot,
+    refetch: refetchMySignups,
+  } = useMySignups(user?.id ?? null)
   const { signUp, unsignUp } = useSignups()
+
+  // Un créneau chevauche-t-il un autre créneau déjà choisi par l'utilisateur ?
+  function overlapsSlot(slot: SlotRow): boolean {
+    return mySignups.some(
+      (s) =>
+        s.slotId !== slot.id &&
+        timesOverlap(slot.start_time, slot.end_time, s.startTime, s.endTime),
+    )
+  }
 
   async function handleSignup(slotId: string): Promise<void> {
     const ok = await signUp(slotId)
@@ -98,7 +115,8 @@ export function StandsList() {
               key={stand.id}
               stand={stand}
               fillRates={fillRates}
-              signedUpSlotIds={signedUpSlotIds}
+              statusBySlot={statusBySlot}
+              overlapsSlot={overlapsSlot}
               isPastEvent={pastEvent}
               onSignup={handleSignup}
               onUnsignup={handleUnsignup}

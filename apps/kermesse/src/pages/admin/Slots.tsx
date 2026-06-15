@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Pencil, Plus, Trash2, X } from 'lucide-react'
+import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { useAuth } from '@agpe/shared/auth/useAuth'
 import { useActiveEvent } from '@/hooks/useActiveEvent'
 import { useStands } from '@/hooks/useStands'
 import { useFillRates } from '@/hooks/useFillRates'
 import { useSlotMutations } from '@/hooks/useSlotMutations'
+import { useSignups } from '@/hooks/useSignups'
 import { useAdminSignups, type AdminSignupDetail } from '@/hooks/useAdminSignups'
 import { SlotForm } from '@/components/admin/SlotForm'
 import { SlotBadge } from '@/components/volunteer/SlotBadge'
+import { ParticipantChip } from '@/components/admin/ParticipantChip'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton'
@@ -29,8 +32,11 @@ export function Slots() {
   const { event, loading: eventLoading } = useActiveEvent()
   const eventId = event?.id ?? null
   const { stands, loading, error, refetch } = useStands(eventId)
+  const { user } = useAuth()
   const { fillRates, refetch: refetchFillRates } = useFillRates()
-  const { details, removeSignup } = useAdminSignups(eventId)
+  const { details, removeSignup, refetch: refetchDetails } =
+    useAdminSignups(eventId)
+  const { signUp, unsignUp } = useSignups()
   const { createSlot, updateSlot, deleteSlot } = useSlotMutations(() => {
     refetch()
     refetchFillRates()
@@ -41,6 +47,27 @@ export function Slots() {
   const [editing, setEditing] = useState<SlotRow | null>(null)
   const [toDelete, setToDelete] = useState<SlotRow | null>(null)
   const [toRemove, setToRemove] = useState<AdminSignupDetail | null>(null)
+  const [selfBusySlot, setSelfBusySlot] = useState<string | null>(null)
+
+  // Inscription / désinscription de l'admin lui-même sur un créneau.
+  async function toggleSelfSignup(slot: SlotRow): Promise<void> {
+    if (!user) return
+    const mine = (participantsBySlot.get(slot.id) ?? []).find(
+      (p) => p.user_id === user.id,
+    )
+    setSelfBusySlot(slot.id)
+    try {
+      const ok = mine
+        ? await unsignUp(slot.id)
+        : (await signUp(slot.id)) !== null
+      if (ok) {
+        refetchDetails()
+        refetchFillRates()
+      }
+    } finally {
+      setSelfBusySlot(null)
+    }
+  }
 
   // Inscrits regroupés par créneau.
   const participantsBySlot = useMemo(() => {
@@ -152,6 +179,9 @@ export function Slots() {
                     const fill = fillRates[slot.id]
                     const current = fill?.currentCount ?? 0
                     const participants = participantsBySlot.get(slot.id) ?? []
+                    const mine = participants.find((p) => p.user_id === user?.id)
+                    const isFull = current >= slot.max_volunteers
+                    const busy = selfBusySlot === slot.id
                     return (
                       <div
                         key={slot.id}
@@ -169,6 +199,19 @@ export function Slots() {
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
+                            <Button
+                              variant={mine ? 'outline' : 'default'}
+                              size="sm"
+                              onClick={() => void toggleSelfSignup(slot)}
+                              disabled={busy}
+                              aria-busy={busy}
+                            >
+                              {mine
+                                ? 'Me désinscrire'
+                                : isFull
+                                  ? 'Remplaçant'
+                                  : "M'inscrire"}
+                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"
@@ -191,20 +234,11 @@ export function Slots() {
                         {participants.length > 0 && (
                           <div className="flex flex-wrap gap-1 border-t pt-2">
                             {participants.map((p) => (
-                              <span
+                              <ParticipantChip
                                 key={p.signup_id}
-                                className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700"
-                              >
-                                {participantLabel(p)}
-                                <button
-                                  type="button"
-                                  onClick={() => setToRemove(p)}
-                                  aria-label={`Désinscrire ${participantLabel(p)}`}
-                                  className="rounded-full p-0.5 text-slate-400 hover:bg-red-100 hover:text-red-600"
-                                >
-                                  <X className="h-3 w-3" />
-                                </button>
-                              </span>
+                                detail={p}
+                                onRemove={() => setToRemove(p)}
+                              />
                             ))}
                           </div>
                         )}

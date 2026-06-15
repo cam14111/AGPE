@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@agpe/shared/supabase-client'
+import type { SignupStatus } from '@/lib/domain'
 
 // Inscription enrichie de l'utilisateur courant (créneau + stand + événement).
 export interface MySignup {
   id: string
   slotId: string
+  status: SignupStatus
   createdAt: string | null
   startTime: string
   endTime: string
@@ -17,6 +19,7 @@ export interface MySignup {
 interface UseMySignupsResult {
   signups: MySignup[]
   signedUpSlotIds: Set<string>
+  statusBySlot: Map<string, SignupStatus>
   loading: boolean
   error: string | null
   refetch: () => void
@@ -25,6 +28,7 @@ interface UseMySignupsResult {
 interface RawSignupRow {
   id: string
   slot_id: string
+  status: SignupStatus
   created_at: string | null
   kermesse_slots: {
     start_time: string
@@ -54,7 +58,7 @@ export function useMySignups(userId: string | null): UseMySignupsResult {
     const { data, error: err } = await supabase
       .from('kermesse_signups')
       .select(
-        `id, slot_id, created_at,
+        `id, slot_id, status, created_at,
          kermesse_slots (
            start_time, end_time,
            kermesse_stands (
@@ -80,6 +84,7 @@ export function useMySignups(userId: string | null): UseMySignupsResult {
       return {
         id: row.id,
         slotId: row.slot_id,
+        status: row.status,
         createdAt: row.created_at,
         startTime: slot?.start_time ?? '',
         endTime: slot?.end_time ?? '',
@@ -103,6 +108,14 @@ export function useMySignups(userId: string | null): UseMySignupsResult {
   }, [fetchSignups])
 
   const signedUpSlotIds = new Set(signups.map((s) => s.slotId))
+  const statusBySlot = new Map(signups.map((s) => [s.slotId, s.status]))
 
-  return { signups, signedUpSlotIds, loading, error, refetch: fetchSignups }
+  return {
+    signups,
+    signedUpSlotIds,
+    statusBySlot,
+    loading,
+    error,
+    refetch: fetchSignups,
+  }
 }

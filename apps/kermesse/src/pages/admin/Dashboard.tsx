@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertTriangle, CheckCircle2, Tent, Users, X } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Tent, Users } from 'lucide-react'
 import { useActiveEvent } from '@/hooks/useActiveEvent'
 import { useStands } from '@/hooks/useStands'
 import { useFillRates } from '@/hooks/useFillRates'
 import { useAdminSignups } from '@/hooks/useAdminSignups'
 import { FillRateCard } from '@/components/admin/FillRateCard'
 import { CsvExportButton } from '@/components/admin/CsvExportButton'
+import { ParticipantChip } from '@/components/admin/ParticipantChip'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton'
 import { ErrorMessage } from '@/components/shared/ErrorMessage'
@@ -192,20 +193,11 @@ export function Dashboard() {
                           ) : (
                             <div className="flex flex-wrap gap-1">
                               {s.participants.map((p) => (
-                                <span
+                                <ParticipantChip
                                   key={p.signup_id}
-                                  className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700"
-                                >
-                                  {participantLabel(p)}
-                                  <button
-                                    type="button"
-                                    onClick={() => setToRemove(p)}
-                                    aria-label={`Désinscrire ${participantLabel(p)}`}
-                                    className="rounded-full p-0.5 text-slate-400 hover:bg-red-100 hover:text-red-600"
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </button>
-                                </span>
+                                  detail={p}
+                                  onRemove={() => setToRemove(p)}
+                                />
                               ))}
                             </div>
                           )}

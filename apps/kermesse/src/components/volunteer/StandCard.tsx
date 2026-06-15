@@ -5,12 +5,18 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { SlotRow } from '@/components/volunteer/SlotRow'
-import type { FillRate, StandWithSlots } from '@/lib/domain'
+import type {
+  FillRate,
+  SignupStatus,
+  SlotRow as SlotRowType,
+  StandWithSlots,
+} from '@/lib/domain'
 
 interface StandCardProps {
   stand: StandWithSlots
   fillRates: Record<string, FillRate>
-  signedUpSlotIds: Set<string>
+  statusBySlot: Map<string, SignupStatus>
+  overlapsSlot: (slot: SlotRowType) => boolean
   isPastEvent: boolean
   onSignup: (slotId: string) => Promise<void>
   onUnsignup: (slotId: string) => Promise<void>
@@ -20,7 +26,8 @@ interface StandCardProps {
 export function StandCard({
   stand,
   fillRates,
-  signedUpSlotIds,
+  statusBySlot,
+  overlapsSlot,
   isPastEvent,
   onSignup,
   onUnsignup,
@@ -53,13 +60,14 @@ export function StandCard({
         ) : (
           stand.kermesse_slots.map((slot) => {
             const fill = fillRates[slot.id]
-            const currentCount = fill?.currentCount ?? 0
             return (
               <SlotRow
                 key={slot.id}
                 slot={slot}
-                currentCount={currentCount}
-                isSignedUp={signedUpSlotIds.has(slot.id)}
+                currentCount={fill?.currentCount ?? 0}
+                replacementCount={fill?.replacementCount ?? 0}
+                myStatus={statusBySlot.get(slot.id)}
+                overlaps={overlapsSlot(slot)}
                 isPastEvent={isPastEvent}
                 onSignup={onSignup}
                 onUnsignup={onUnsignup}
