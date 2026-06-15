@@ -67,7 +67,7 @@ export function StandsList() {
   if (!event) {
     return (
       <div className="text-center py-12 text-slate-500">
-        <p className="text-lg">Aucune kermesse n'est ouverte pour le moment.</p>
+        <p className="text-lg">Aucun événement n'est ouvert pour le moment.</p>
         <p className="text-sm mt-2">
           Revenez bientôt : les organisateurs préparent la prochaine édition.
         </p>
@@ -94,7 +94,7 @@ export function StandsList() {
         )}
         {pastEvent && (
           <p className="text-xs text-slate-500 mt-2">
-            Cette kermesse est passée — les inscriptions sont clôturées.
+            Cet événement est passé — les inscriptions sont clôturées.
           </p>
         )}
       </section>

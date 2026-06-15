@@ -30,7 +30,7 @@ export function Roles() {
     <div>
       <PageHeader
         title="Administrateurs"
-        description="Gérez qui peut administrer la kermesse. Il doit toujours rester au moins un administrateur."
+        description="Gérez qui peut administrer les événements. Il doit toujours rester au moins un administrateur."
       />
 
       {members.length === 0 ? (
@@ -117,7 +117,7 @@ export function Roles() {
         description={
           pending
             ? pending.role === 'admin'
-              ? `${memberLabel(pending.member)} aura accès à toute l'administration de la kermesse.`
+              ? `${memberLabel(pending.member)} aura accès à toute l'administration des événements.`
               : `${memberLabel(pending.member)} redeviendra un bénévole sans accès admin.`
             : undefined
         }

@@ -58,7 +58,7 @@ export function Events() {
     <div>
       <PageHeader
         title="Événements"
-        description="Gérez les éditions de la kermesse."
+        description="Gérez les éditions de vos événements."
         action={
           <Button onClick={openCreate}>
             <Plus className="h-4 w-4" />

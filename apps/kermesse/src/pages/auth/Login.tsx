@@ -96,7 +96,7 @@ export function Login() {
           </div>
           <CardTitle className="text-xl">Connexion bénévole</CardTitle>
           <CardDescription>
-            Kermesse AGPE — avec Google ou par lien email, sans mot de passe.
+            Événements AGPE — avec Google ou par lien email, sans mot de passe.
           </CardDescription>
         </CardHeader>
         <CardContent>

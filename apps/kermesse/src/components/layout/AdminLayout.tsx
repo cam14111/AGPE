@@ -66,7 +66,7 @@ export function AdminLayout() {
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <span className="font-semibold text-slate-900">Admin Kermesse</span>
+          <span className="font-semibold text-slate-900">Admin Événements</span>
         </div>
         <AccountMenu />
       </header>

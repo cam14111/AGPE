@@ -79,7 +79,7 @@ export function SlotRow({
       </div>
 
       {isSignedUp ? (
-        // Masqué (pas seulement désactivé) après la date de la kermesse.
+        // Masqué (pas seulement désactivé) après la date de l'événement.
         !isPastEvent && (
           <Button
             variant="outline"
