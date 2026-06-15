@@ -40,9 +40,10 @@ export function DayTimeline({
     }
     const span = Math.max(max - min, 60)
     const tickList: number[] = []
-    // Ticks horaires strictement dans [min, max] pour éviter tout débordement.
-    for (let h = Math.ceil(min / 60); h <= Math.floor(max / 60); h++) {
-      tickList.push(h * 60)
+    // Ticks par pas de 30 min, strictement dans [min, max] (pas de débordement).
+    const STEP = 30
+    for (let t = Math.ceil(min / STEP) * STEP; t <= Math.floor(max / STEP) * STEP; t += STEP) {
+      tickList.push(t)
     }
     return { axisStart: min, axisSpan: span, ticks: tickList }
   }, [days, eventOpen, eventClose])
@@ -80,13 +81,15 @@ export function DayTimeline({
               : p >= 99.99
                 ? '-translate-x-full'
                 : '-translate-x-1/2'
+          const h = Math.floor(t / 60)
+          const m = t % 60
           return (
             <span
               key={t}
               className={`absolute ${transform}`}
               style={{ left: `${p}%` }}
             >
-              {String(Math.floor(t / 60)).padStart(2, '0')}h
+              {m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, '0')}`}
             </span>
           )
         })}
