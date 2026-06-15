@@ -72,20 +72,29 @@ export function EventForm({
     values.start_date && values.end_date && values.end_date > values.start_date
 
   useEffect(() => {
-    if (open) {
-      const form = toForm(event)
-      setValues(form)
-      setError(null)
-      setShowCustom(false)
-      // Initialise les horaires personnalisés depuis les données existantes.
-      setCustomDays(
-        daySchedules.map((s) => ({
-          date: s.date,
-          open_time: s.open_time.slice(0, 5),
-          close_time: s.close_time.slice(0, 5),
-        })),
-      )
-    }
+    if (!open) return
+    const form = toForm(event)
+    setValues(form)
+    setError(null)
+    setShowCustom(false)
+    // Construit la liste de TOUS les jours de l'événement, en appliquant les
+    // horaires personnalisés existants et les horaires par défaut sinon.
+    const days =
+      form.start_date && form.end_date && form.end_date >= form.start_date
+        ? getEventDays(form.start_date, form.end_date)
+        : []
+    setCustomDays(
+      days.map((date) => {
+        const custom = daySchedules.find((s) => s.date === date)
+        return custom
+          ? {
+              date,
+              open_time: custom.open_time.slice(0, 5),
+              close_time: custom.close_time.slice(0, 5),
+            }
+          : { date, open_time: form.start_time, close_time: form.end_time }
+      }),
+    )
   }, [open, event, daySchedules])
 
   // Recalcule la liste des jours personnalisés quand la plage change.
@@ -176,7 +185,7 @@ export function EventForm({
               required
               value={values.name}
               onChange={(e) => update('name', e.target.value)}
-              placeholder="Kermesse 2026"
+              placeholder="Événement 2026"
             />
           </div>
 
