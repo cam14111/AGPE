@@ -35,6 +35,8 @@ export function DayTimeline({
     let min = toMinutes(eventOpen)
     let max = toMinutes(eventClose)
     for (const d of days) {
+      if (d.eventOpen) min = Math.min(min, toMinutes(d.eventOpen))
+      if (d.eventClose) max = Math.max(max, toMinutes(d.eventClose))
       if (d.open) min = Math.min(min, toMinutes(d.open))
       if (d.close) max = Math.max(max, toMinutes(d.close))
     }
@@ -103,10 +105,12 @@ export function DayTimeline({
               {formatDayShort(day.date)}
             </span>
             <div className="relative h-7 flex-1 rounded bg-slate-50">
-              <div
-                className="absolute top-0 h-full rounded bg-slate-200"
-                style={style(eventOpen, eventClose)}
-              />
+              {day.eventOpen && day.eventClose && (
+                <div
+                  className="absolute top-0 h-full rounded bg-slate-200"
+                  style={style(day.eventOpen, day.eventClose)}
+                />
+              )}
               {day.open && day.close && (
                 <div
                   className="absolute top-0 h-full rounded bg-emerald-200"

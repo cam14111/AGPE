@@ -232,9 +232,12 @@ export interface OpenDay {
   close: string
 }
 
-// Journée d'aperçu : horaires définis uniquement si le stand est ouvert ce jour-là.
+// Journée d'aperçu : horaires de l'événement ce jour-là (gris, toujours), et
+// horaires d'ouverture du stand (vert, seulement si le stand est ouvert).
 export interface DayRow {
   date: string
+  eventOpen: string
+  eventClose: string
   open?: string
   close?: string
 }
@@ -262,27 +265,27 @@ export function resolveEventDaysForStand(
   openDays: string[],
 ): DayRow[] {
   return getEventDays(event.start_date, event.end_date).map((date) => {
-    if (openDays.includes(date)) {
-      const open = resolveOpenTime(event, schedules, date) ?? undefined
-      const close = resolveCloseTime(event, schedules, date) ?? undefined
-      if (open && close && close > open) return { date, open, close }
-    }
-    return { date }
+    const eventOpen = resolveOpenTime(event, schedules, date) ?? ''
+    const eventClose = resolveCloseTime(event, schedules, date) ?? ''
+    const isOpen =
+      openDays.includes(date) && !!eventOpen && !!eventClose && eventClose > eventOpen
+    return isOpen
+      ? { date, eventOpen, eventClose, open: eventOpen, close: eventClose }
+      : { date, eventOpen, eventClose }
   })
 }
 
-// Fenêtre horaire de l'événement pour l'aperçu (fallback sur les plages stand).
+// Fenêtre horaire globale pour l'axe : la plus large des plages (événement + jours).
 export function eventTimeWindow(
   event: EventRow,
   days: DayRow[],
 ): { open: string; close: string } {
-  const withHours = days.filter((d) => d.open && d.close)
-  const open =
-    formatTime(event.start_time) ||
-    withHours.reduce((m, d) => (m && m < d.open! ? m : d.open!), '')
-  const close =
-    formatTime(event.end_time) ||
-    withHours.reduce((m, d) => (m && m > d.close! ? m : d.close!), '')
+  let open = formatTime(event.start_time) || ''
+  let close = formatTime(event.end_time) || ''
+  for (const d of days) {
+    if (d.eventOpen && (!open || d.eventOpen < open)) open = d.eventOpen
+    if (d.eventClose && (!close || d.eventClose > close)) close = d.eventClose
+  }
   return { open: open || '08:00', close: close || '20:00' }
 }
 
