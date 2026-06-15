@@ -33,6 +33,7 @@ export function Events() {
   const [toDelete, setToDelete] = useState<EventRow | null>(null)
   const [toActivate, setToActivate] = useState<EventRow | null>(null)
   const [postCreationEventId, setPostCreationEventId] = useState<string | null>(null)
+  const [activateAskId, setActivateAskId] = useState<string | null>(null)
   // Ref pour accès synchrone à l'ID créé (les state updates sont async).
   const justCreatedIdRef = useRef<string | null>(null)
 
@@ -136,10 +137,18 @@ export function Events() {
         onOpenChange={setFormOpen}
         onSubmit={async (values) => {
           if (editing) return updateEvent(editing.id, values)
+          const isFirst = events.length === 0
           const id = await createEvent(values)
           if (id !== null) {
             justCreatedIdRef.current = id
-            setPostCreationEventId(id)
+            if (isFirst) {
+              // Premier événement : activé automatiquement.
+              await activateEvent(id)
+              setPostCreationEventId(id)
+            } else {
+              // Sinon, on demande explicitement via une modale.
+              setActivateAskId(id)
+            }
             return true
           }
           return false
@@ -154,6 +163,25 @@ export function Events() {
         }}
         onCreated={() => {
           setFormOpen(false)
+        }}
+      />
+
+      <ConfirmDialog
+        open={activateAskId !== null}
+        title="Activer ce nouvel événement ?"
+        description="Il deviendra l'édition visible par les bénévoles. L'édition active actuelle sera désactivée."
+        confirmLabel="Activer"
+        cancelLabel="Plus tard"
+        onConfirm={async () => {
+          if (activateAskId) await activateEvent(activateAskId)
+        }}
+        onOpenChange={(o) => {
+          if (!o) {
+            // Quel que soit le choix, on enchaîne sur le workflow post-création.
+            const id = activateAskId
+            setActivateAskId(null)
+            if (id) setPostCreationEventId(id)
+          }
         }}
       />
 
