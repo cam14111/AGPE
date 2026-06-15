@@ -19,6 +19,17 @@ export function isEventPast(eventDate: string): boolean {
   return target.getTime() < today.getTime()
 }
 
+// Vrai si la date + heure (YYYY-MM-DD, HH:MM[:SS]) est strictement passée
+// (comparaison à l'instant présent, fuseau local).
+export function isDateTimePast(date: string, time: string): boolean {
+  if (!date) return false
+  const [y, m, d] = date.split('-').map(Number)
+  const [hh, mm] = time.split(':').map(Number)
+  if (y === undefined || m === undefined || d === undefined) return false
+  const end = new Date(y, m - 1, d, hh ?? 0, mm ?? 0, 0, 0)
+  return end.getTime() < Date.now()
+}
+
 // Formate une date ISO (YYYY-MM-DD) en libellé court : "samedi 27".
 export function formatDayShort(date: string): string {
   const [y, m, d] = date.split('-').map(Number)
