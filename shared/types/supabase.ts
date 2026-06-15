@@ -213,6 +213,51 @@ export interface Database {
         }
         Relationships: []
       }
+      kermesse_signup_audit: {
+        Row: {
+          id: string
+          event_id: string
+          action: 'signup' | 'replacement' | 'unsignup' | 'auto_reserved'
+          volunteer_user_id: string | null
+          first_name: string | null
+          last_name: string | null
+          stand_name: string | null
+          slot_start: string | null
+          slot_end: string | null
+          actor_kind: 'self' | 'admin' | 'system'
+          actor_name: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          event_id: string
+          action: 'signup' | 'replacement' | 'unsignup' | 'auto_reserved'
+          volunteer_user_id?: string | null
+          first_name?: string | null
+          last_name?: string | null
+          stand_name?: string | null
+          slot_start?: string | null
+          slot_end?: string | null
+          actor_kind: 'self' | 'admin' | 'system'
+          actor_name?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          event_id?: string
+          action?: 'signup' | 'replacement' | 'unsignup' | 'auto_reserved'
+          volunteer_user_id?: string | null
+          first_name?: string | null
+          last_name?: string | null
+          stand_name?: string | null
+          slot_start?: string | null
+          slot_end?: string | null
+          actor_kind?: 'self' | 'admin' | 'system'
+          actor_name?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {

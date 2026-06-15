@@ -12,6 +12,7 @@ import { Events } from '@/pages/admin/Events'
 import { Stands } from '@/pages/admin/Stands'
 import { Slots } from '@/pages/admin/Slots'
 import { Roles } from '@/pages/admin/Roles'
+import { History } from '@/pages/admin/History'
 import { StandsList } from '@/pages/volunteer/StandsList'
 import { MyPlanning } from '@/pages/volunteer/MyPlanning'
 
@@ -110,6 +111,7 @@ export function AppRoutes() {
         <Route path="stands" element={<Stands />} />
         <Route path="slots" element={<Slots />} />
         <Route path="roles" element={<Roles />} />
+        <Route path="history" element={<History />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

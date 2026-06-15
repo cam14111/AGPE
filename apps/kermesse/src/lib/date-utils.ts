@@ -43,6 +43,19 @@ export function formatTime(time: string | null): string {
   return time.slice(0, 5)
 }
 
+// Formate un timestamp ISO en date + heure française : "14/06/2026 à 21:30".
+export function formatDateTime(iso: string): string {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return iso
+  return new Intl.DateTimeFormat('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
+}
+
 // Vrai si deux intervalles horaires se chevauchent (comparaison lexicale des
 // heures "HH:MM[:SS]", valides car même format). Les créneaux adjacents ne se
 // chevauchent pas (a.end == b.start est autorisé).

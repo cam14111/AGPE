@@ -1,6 +1,15 @@
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
-import { BarChart3, CalendarDays, Clock, Menu, ShieldCheck, Tent, X } from 'lucide-react'
+import {
+  BarChart3,
+  CalendarDays,
+  Clock,
+  Menu,
+  ScrollText,
+  ShieldCheck,
+  Tent,
+  X,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { AccountMenu } from '@/components/layout/AccountMenu'
@@ -11,6 +20,7 @@ const navItems = [
   { to: '/admin/stands', label: 'Stands', icon: Tent },
   { to: '/admin/slots', label: 'Créneaux', icon: Clock },
   { to: '/admin/roles', label: 'Administrateurs', icon: ShieldCheck },
+  { to: '/admin/history', label: 'Historique', icon: ScrollText },
 ]
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
