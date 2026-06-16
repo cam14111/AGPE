@@ -1,3 +1,4 @@
+import type * as React from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -9,18 +10,48 @@ interface FillRateCardProps {
   icon: LucideIcon
   progress?: number
   danger?: boolean
+  onClick?: () => void
+  active?: boolean
+  ariaLabel?: string
 }
 
-// Carte d'indicateur clé du tableau de bord.
+// Carte d'indicateur clé du tableau de bord. Devient un bouton de filtre
+// cliquable lorsque `onClick` est fourni.
 export function FillRateCard({
   label,
   value,
   icon: Icon,
   progress,
   danger = false,
+  onClick,
+  active = false,
+  ariaLabel,
 }: FillRateCardProps) {
+  const interactive = onClick !== undefined
+
   return (
-    <Card>
+    <Card
+      className={cn(
+        interactive &&
+          'cursor-pointer transition hover:border-primary/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+        interactive && active && 'border-primary bg-primary/5 ring-2 ring-primary',
+      )}
+      {...(interactive
+        ? {
+            role: 'button',
+            tabIndex: 0,
+            'aria-pressed': active,
+            'aria-label': ariaLabel,
+            onClick,
+            onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onClick?.()
+              }
+            },
+          }
+        : {})}
+    >
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <span className="text-sm text-slate-600">{label}</span>

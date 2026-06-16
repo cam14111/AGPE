@@ -40,6 +40,29 @@ export function formatDayShort(date: string): string {
   }).format(new Date(y, m - 1, d))
 }
 
+// Formate une date ISO (YYYY-MM-DD) en "Mardi 16 juin" (jour + date + mois,
+// première lettre capitalisée). Utilisé pour distinguer les créneaux multi-jours.
+export function formatDayMonth(date: string): string {
+  const [y, m, d] = date.split('-').map(Number)
+  if (y === undefined || m === undefined || d === undefined) return date
+  const label = new Intl.DateTimeFormat('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }).format(new Date(y, m - 1, d))
+  return label.charAt(0).toUpperCase() + label.slice(1)
+}
+
+// Formate une date ISO (YYYY-MM-DD) en version compacte "mar. 16/06" (mobile).
+export function formatDayCompact(date: string): string {
+  const [y, m, d] = date.split('-').map(Number)
+  if (y === undefined || m === undefined || d === undefined) return date
+  const weekday = new Intl.DateTimeFormat('fr-FR', { weekday: 'short' }).format(
+    new Date(y, m - 1, d),
+  )
+  return `${weekday} ${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}`
+}
+
 // Formate une date ISO (YYYY-MM-DD) en français lisible : "samedi 14 juin 2026".
 export function formatEventDate(eventDate: string): string {
   const parts = eventDate.split('-').map(Number)
