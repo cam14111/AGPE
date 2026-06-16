@@ -13,12 +13,14 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton'
 import { ErrorMessage } from '@/components/shared/ErrorMessage'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { ToggleSwitch } from '@/components/shared/ToggleSwitch'
 import { cn } from '@/lib/utils'
 import {
   formatTime,
   formatDayShort,
   formatEventDateRange,
   isDateTimePast,
+  isEventPast,
 } from '@/lib/date-utils'
 
 interface EventSection {
@@ -35,6 +37,7 @@ export function MyPlanning() {
   const { unsignUp, unsignUpMany } = useSignups()
   const { event: activeEvent } = useActiveEvent()
   const [toUnsubscribe, setToUnsubscribe] = useState<PlanningGroup | null>(null)
+  const [hidePastEvents, setHidePastEvents] = useState(true)
 
   // Regroupe les créneaux consécutifs, puis range les groupes par événement
   // (les groupes sont déjà triés chronologiquement par groupConsecutiveSignups).
@@ -59,6 +62,13 @@ export function MyPlanning() {
     }
     return order.map((id) => byEvent.get(id)!)
   }, [signups])
+
+  // Un événement est « passé » lorsque sa date de fin est antérieure à aujourd'hui.
+  // (Les créneaux passés d'un événement en cours/à venir restent affichés.)
+  const hasPastEvents = sections.some((s) => isEventPast(s.eventEndDate))
+  const visibleSections = hidePastEvents
+    ? sections.filter((s) => !isEventPast(s.eventEndDate))
+    : sections
 
   async function handleUnsubscribe(): Promise<void> {
     if (!toUnsubscribe) return
@@ -88,8 +98,30 @@ export function MyPlanning() {
           </p>
         </div>
       ) : (
-        <div className="space-y-6">
-          {sections.map((section) => {
+        <>
+          {hasPastEvents && (
+            <div className="mb-4 flex items-center justify-end gap-2">
+              <span
+                id="hide-past-label"
+                className="text-sm text-slate-600 select-none"
+              >
+                Masquer les événements passés
+              </span>
+              <ToggleSwitch
+                checked={hidePastEvents}
+                onChange={setHidePastEvents}
+                label="Masquer les événements passés"
+              />
+            </div>
+          )}
+
+          {visibleSections.length === 0 ? (
+            <p className="py-12 text-center text-slate-500">
+              Tous vos événements sont passés (masqués).
+            </p>
+          ) : (
+            <div className="space-y-6">
+              {visibleSections.map((section) => {
             const isActive = section.eventId === activeEvent?.id
             return (
               <section key={section.eventId}>
@@ -174,7 +206,9 @@ export function MyPlanning() {
               </section>
             )
           })}
-        </div>
+            </div>
+          )}
+        </>
       )}
 
       <ConfirmDialog
