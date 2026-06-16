@@ -87,6 +87,26 @@ export function formatTime(time: string | null): string {
   return time.slice(0, 5)
 }
 
+// Formate un timestamp ISO (UTC) en "dd/mm/yyyy hh:mm" à l'heure légale
+// française (fuseau Europe/Paris, gestion automatique hiver UTC+1 / été UTC+2).
+// Indépendant du fuseau de la machine grâce à l'option timeZone.
+export function formatTimestampParis(iso: string): string {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return iso
+  const parts = new Intl.DateTimeFormat('fr-FR', {
+    timeZone: 'Europe/Paris',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(date)
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value ?? ''
+  return `${get('day')}/${get('month')}/${get('year')} ${get('hour')}:${get('minute')}`
+}
+
 // Formate un timestamp ISO en date + heure française : "14/06/2026 à 21:30".
 export function formatDateTime(iso: string): string {
   const date = new Date(iso)

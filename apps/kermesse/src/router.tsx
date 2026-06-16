@@ -8,6 +8,7 @@ import { Login } from '@/pages/auth/Login'
 import { Callback } from '@/pages/auth/Callback'
 import { Profile } from '@/pages/Profile'
 import { Dashboard } from '@/pages/admin/Dashboard'
+import { Supervision } from '@/pages/admin/Supervision'
 import { Events } from '@/pages/admin/Events'
 import { Stands } from '@/pages/admin/Stands'
 import { Slots } from '@/pages/admin/Slots'
@@ -107,6 +108,7 @@ export function AppRoutes() {
       >
         <Route index element={<Navigate to="/admin/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
+        <Route path="supervision" element={<Supervision />} />
         <Route path="events" element={<Events />} />
         <Route path="stands" element={<Stands />} />
         <Route path="slots" element={<Slots />} />

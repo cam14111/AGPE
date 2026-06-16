@@ -6,6 +6,8 @@ export interface SignupExportRow {
   firstName: string
   lastName: string
   standName: string
+  // Jour du créneau (date française lisible).
+  day: string
   startTime: string
   endTime: string
   createdAt: string
@@ -23,13 +25,14 @@ function escapeCsv(value: string): string {
 }
 
 export function generateCsv(rows: SignupExportRow[]): string {
-  const header = 'Email;Prénom;Nom;Stand;Créneau;Date inscription'
+  const header = 'Email;Prénom;Nom;Stand;Jour;Créneau;Date inscription'
   const lines = rows.map((r) =>
     [
       r.email,
       r.firstName,
       r.lastName,
       r.standName,
+      r.day,
       `${r.startTime} → ${r.endTime}`,
       r.createdAt,
     ]

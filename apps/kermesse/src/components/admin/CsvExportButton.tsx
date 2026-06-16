@@ -7,7 +7,7 @@ import {
   generateCsv,
   type SignupExportRow,
 } from '@/lib/csv-export'
-import { formatTime } from '@/lib/date-utils'
+import { formatEventDate, formatTime, formatTimestampParis } from '@/lib/date-utils'
 import type { AdminSignupDetail } from '@/hooks/useAdminSignups'
 
 interface CsvExportButtonProps {
@@ -26,9 +26,10 @@ export function CsvExportButton({ details }: CsvExportButtonProps) {
       firstName: d.first_name ?? '',
       lastName: d.last_name ?? '',
       standName: d.stand_name,
+      day: formatEventDate(d.slot_date),
       startTime: formatTime(d.start_time),
       endTime: formatTime(d.end_time),
-      createdAt: d.created_at,
+      createdAt: formatTimestampParis(d.created_at),
     }))
     downloadCsv(generateCsv(rows), buildCsvFilename())
     toast.success('Export CSV téléchargé.')

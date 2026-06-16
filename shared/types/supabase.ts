@@ -382,6 +382,7 @@ export interface Database {
           stand_id: string
           stand_name: string
           slot_id: string
+          slot_date: string
           start_time: string
           end_time: string
           status: 'reserved' | 'replacement'

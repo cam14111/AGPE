@@ -5,6 +5,7 @@ import {
   CalendarDays,
   ClipboardList,
   Clock,
+  Radar,
   ScrollText,
   ShieldCheck,
   Tent,
@@ -16,6 +17,7 @@ import { AccountMenu } from '@/components/layout/AccountMenu'
 
 const navItems = [
   { to: '/admin/dashboard', label: 'Tableau de bord', icon: BarChart3 },
+  { to: '/admin/supervision', label: 'Supervision', icon: Radar },
   { to: '/admin/events', label: 'Événements', icon: CalendarDays },
   { to: '/admin/stands', label: 'Stands', icon: Tent },
   { to: '/admin/slots', label: 'Créneaux', icon: Clock },
