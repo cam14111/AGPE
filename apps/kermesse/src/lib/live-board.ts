@@ -35,11 +35,30 @@ export interface LiveNext {
   people: string[]
 }
 
+export interface LivePresenceLine {
+  until: string // HH:MM : heure réelle de fin partagée
+  labels: string[] // bénévoles présents jusqu'à cette heure
+}
+
+// Regroupe les présents par heure réelle de fin, dans leur ordre d'apparition.
+// Évite de répéter une ligne par bénévole quand plusieurs finissent en même temps.
+export function groupPresenceByUntil(people: LivePerson[]): LivePresenceLine[] {
+  const lines: LivePresenceLine[] = []
+  for (const p of people) {
+    const existing = lines.find((l) => l.until === p.until)
+    if (existing) existing.labels.push(p.label)
+    else lines.push({ until: p.until, labels: [p.label] })
+  }
+  return lines
+}
+
 export interface StandLive {
   state: LiveState
   current: LivePerson[]
   next: LiveNext | null
   currentSlot: { start: string; end: string } | null // HH:MM
+  currentFilled: number // réservés présents sur le créneau courant (0 si personne)
+  currentCapacity: number // max_volunteers du créneau courant (0 si aucun créneau)
 }
 
 // Inscrits « réservés » (présents) d'un créneau, dans l'ordre fourni par la RPC.
@@ -86,7 +105,14 @@ export function computeStandLive(
     .sort((a, b) => a.start_time.localeCompare(b.start_time))
 
   if (daySlots.length === 0) {
-    return { state: 'closed-today', current: [], next: null, currentSlot: null }
+    return {
+      state: 'closed-today',
+      current: [],
+      next: null,
+      currentSlot: null,
+      currentFilled: 0,
+      currentCapacity: 0,
+    }
   }
 
   const currentIdx = daySlots.findIndex(
@@ -96,12 +122,26 @@ export function computeStandLive(
   // Aucun créneau en cours : relève = 1er créneau à venir avec un réservé.
   if (currentIdx === -1) {
     const next = findNext(daySlots, -1, new Set(), participantsBySlot)
-    return { state: 'idle', current: [], next, currentSlot: null }
+    return {
+      state: 'idle',
+      current: [],
+      next,
+      currentSlot: null,
+      currentFilled: 0,
+      currentCapacity: 0,
+    }
   }
 
   const currentSlot = daySlots[currentIdx]
   if (!currentSlot) {
-    return { state: 'idle', current: [], next: null, currentSlot: null }
+    return {
+      state: 'idle',
+      current: [],
+      next: null,
+      currentSlot: null,
+      currentFilled: 0,
+      currentCapacity: 0,
+    }
   }
   const slotTimes = {
     start: formatTime(currentSlot.start_time),
@@ -117,6 +157,8 @@ export function computeStandLive(
       current: [],
       next,
       currentSlot: slotTimes,
+      currentFilled: 0,
+      currentCapacity: currentSlot.max_volunteers,
     }
   }
 
@@ -139,5 +181,12 @@ export function computeStandLive(
   const currentUserIds = new Set(currentReserved.map((p) => p.user_id))
   const next = findNext(daySlots, currentIdx, currentUserIds, participantsBySlot)
 
-  return { state: 'in-progress', current, next, currentSlot: slotTimes }
+  return {
+    state: 'in-progress',
+    current,
+    next,
+    currentSlot: slotTimes,
+    currentFilled: currentReserved.length,
+    currentCapacity: currentSlot.max_volunteers,
+  }
 }

@@ -3,6 +3,7 @@ import { ParticipantTag } from '@/components/admin/ParticipantTag'
 import { formatEventDate, formatTime } from '@/lib/date-utils'
 import { participantLabel } from '@/lib/participant'
 import { cn } from '@/lib/utils'
+import { slotStatus, SLOT_STATUS_CLASSES, SLOT_STATUS_LABELS } from '@/lib/slot-status'
 import type { SlotRow, StandWithSlots } from '@/lib/domain'
 import type { AdminSignupDetail } from '@/hooks/useAdminSignups'
 import type { NowParts } from '@/lib/live-board'
@@ -11,13 +12,29 @@ interface StandRecapCardProps {
   stand: StandWithSlots
   participantsBySlot: Map<string, AdminSignupDetail[]>
   now: NowParts
+  hidePast: boolean
+}
+
+// Un créneau est « passé » lorsqu'il est entièrement terminé (date révolue, ou
+// jour courant avec fin <= maintenant). Les créneaux sans date ne sont jamais passés.
+function isSlotPast(slot: SlotRow, now: NowParts): boolean {
+  if (!slot.date) return false
+  return (
+    slot.date < now.date || (slot.date === now.date && slot.end_time <= now.time)
+  )
 }
 
 // Carte récapitulative d'un stand : créneaux groupés par jour, avec les inscrits
 // (réservés + remplaçants) et surlignage du créneau en cours.
-export function StandRecapCard({ stand, participantsBySlot, now }: StandRecapCardProps) {
+export function StandRecapCard({
+  stand,
+  participantsBySlot,
+  now,
+  hidePast,
+}: StandRecapCardProps) {
   const slotsByDay = new Map<string, SlotRow[]>()
   for (const slot of stand.kermesse_slots) {
+    if (hidePast && isSlotPast(slot, now)) continue
     const key = slot.date ?? ''
     const list = slotsByDay.get(key) ?? []
     list.push(slot)
@@ -36,6 +53,8 @@ export function StandRecapCard({ stand, participantsBySlot, now }: StandRecapCar
       <CardContent className="space-y-4">
         {stand.kermesse_slots.length === 0 ? (
           <p className="text-sm text-slate-400">Aucun créneau.</p>
+        ) : days.length === 0 ? (
+          <p className="text-sm text-slate-400">Aucun créneau en cours ou à venir.</p>
         ) : (
           days.map((day) => (
             <div key={day || 'sans-date'}>
@@ -53,22 +72,37 @@ export function StandRecapCard({ stand, participantsBySlot, now }: StandRecapCar
                     day === now.date &&
                     slot.start_time <= now.time &&
                     now.time < slot.end_time
+                  const isPast = isSlotPast(slot, now)
+                  const status = slotStatus({
+                    isPast,
+                    filled: reserved.length,
+                    capacity: slot.max_volunteers,
+                  })
                   return (
                     <li
                       key={slot.id}
                       className={cn(
                         'rounded-md border px-3 py-2',
-                        isCurrent
-                          ? 'border-primary bg-primary/5'
-                          : 'border-slate-100',
+                        SLOT_STATUS_CLASSES[status],
+                        status === 'past' && 'text-slate-400',
                       )}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium tabular-nums">
+                        <span
+                          className={cn(
+                            'text-sm font-medium tabular-nums',
+                            status === 'past' && 'text-slate-400',
+                          )}
+                        >
                           {formatTime(slot.start_time)} → {formatTime(slot.end_time)}
                           {isCurrent && (
                             <span className="ml-2 rounded bg-primary px-1.5 py-0.5 text-[10px] font-semibold uppercase text-primary-foreground">
                               en cours
+                            </span>
+                          )}
+                          {status !== 'empty' && (
+                            <span className="ml-2 text-[10px] font-semibold uppercase text-slate-500">
+                              {SLOT_STATUS_LABELS[status]}
                             </span>
                           )}
                         </span>

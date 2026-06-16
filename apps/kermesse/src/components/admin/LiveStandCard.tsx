@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
-import { computeStandLive, type NowParts } from '@/lib/live-board'
+import { computeStandLive, groupPresenceByUntil, type NowParts } from '@/lib/live-board'
+import { slotStatus, SLOT_STATUS_CLASSES } from '@/lib/slot-status'
 import type { StandWithSlots } from '@/lib/domain'
 import type { AdminSignupDetail } from '@/hooks/useAdminSignups'
 
@@ -14,10 +15,18 @@ interface LiveStandCardProps {
 // créneaux consécutifs fusionnés) et qui prend la suite.
 export function LiveStandCard({ stand, participantsBySlot, now }: LiveStandCardProps) {
   const live = computeStandLive(stand.kermesse_slots, participantsBySlot, now)
-  const alert = live.state === 'no-current-signup'
+  // Code couleur uniquement quand un créneau est en cours (sinon affichage neutre).
+  const status =
+    live.state === 'in-progress' || live.state === 'no-current-signup'
+      ? slotStatus({
+          isPast: false,
+          filled: live.currentFilled,
+          capacity: live.currentCapacity,
+        })
+      : null
 
   return (
-    <Card className={cn(alert && 'border-red-300 bg-red-50')}>
+    <Card className={cn(status && SLOT_STATUS_CLASSES[status])}>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2">
           <span aria-hidden="true">{stand.emoji ?? '🎪'}</span>
@@ -27,16 +36,21 @@ export function LiveStandCard({ stand, participantsBySlot, now }: LiveStandCardP
       <CardContent className="space-y-3 text-sm">
         {live.state === 'in-progress' && (
           <div>
-            <p className="text-xs uppercase tracking-wide text-slate-500">
-              Actuellement
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+              {live.currentFilled >= live.currentCapacity
+                ? 'Actuellement complet'
+                : `Actuellement ${live.currentFilled} bénévole${
+                    live.currentFilled > 1 ? 's' : ''
+                  } sur ${live.currentCapacity}`}
             </p>
             <ul className="mt-0.5 space-y-0.5">
-              {live.current.map((p, i) => (
+              {groupPresenceByUntil(live.current).map((line, i) => (
                 <li key={i} className="font-medium text-slate-900">
-                  {p.label}
+                  {line.labels.join(', ')}
                   <span className="font-normal text-slate-500">
                     {' '}
-                    — présent jusqu'à {p.until}
+                    — {line.labels.length > 1 ? 'présents' : 'présent'} jusqu'à{' '}
+                    {line.until}
                   </span>
                 </li>
               ))}

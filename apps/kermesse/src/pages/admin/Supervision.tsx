@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton'
 import { ErrorMessage } from '@/components/shared/ErrorMessage'
 import { Button } from '@/components/ui/button'
+import { ToggleSwitch } from '@/components/shared/ToggleSwitch'
 import { StandRecapCard } from '@/components/admin/StandRecapCard'
 import { LiveStandCard } from '@/components/admin/LiveStandCard'
 import { formatTime } from '@/lib/date-utils'
@@ -36,6 +37,7 @@ export function Supervision() {
   const { details, error: detailsError, refetch: refetchSignups } =
     useAdminSignups(eventId)
   const [tab, setTab] = useState<Tab>('recap')
+  const [hidePast, setHidePast] = useState(true)
   const now = useNow(30_000)
 
   // En vue temps réel, on recharge les données toutes les 60 s.
@@ -123,6 +125,18 @@ export function Supervision() {
             à {formatTime(nowP.time)}
           </span>
         )}
+        {tab === 'recap' && (
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-sm text-slate-600 select-none">
+              Masquer les créneaux passés
+            </span>
+            <ToggleSwitch
+              checked={hidePast}
+              onChange={setHidePast}
+              label="Masquer les créneaux passés"
+            />
+          </div>
+        )}
       </div>
 
       {standsError || detailsError ? (
@@ -142,6 +156,7 @@ export function Supervision() {
                 stand={stand}
                 participantsBySlot={participantsBySlot}
                 now={nowP}
+                hidePast={hidePast}
               />
             ) : (
               <LiveStandCard
