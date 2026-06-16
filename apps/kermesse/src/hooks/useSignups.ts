@@ -7,6 +7,7 @@ import type { SignupStatus } from '@/lib/domain'
 interface UseSignupsResult {
   signUp: (slotId: string) => Promise<SignupStatus | null>
   unsignUp: (slotId: string) => Promise<boolean>
+  unsignUpMany: (slotIds: string[]) => Promise<boolean>
 }
 
 // Actions d'inscription / désinscription, avec mapping des erreurs DB
@@ -69,5 +70,28 @@ export function useSignups(): UseSignupsResult {
     [user],
   )
 
-  return { signUp, unsignUp }
+  // Désinscription groupée : retire l'utilisateur de plusieurs créneaux en une
+  // seule requête (carte regroupée de « Mon planning »).
+  const unsignUpMany = useCallback(
+    async (slotIds: string[]): Promise<boolean> => {
+      if (!user) return false
+      if (slotIds.length === 0) return true
+      const { error } = await supabase
+        .from('kermesse_signups')
+        .delete()
+        .in('slot_id', slotIds)
+        .eq('user_id', user.id)
+
+      if (error) {
+        toast.error('Impossible de se désinscrire. Réessayez dans quelques instants.')
+        console.error('[kermesse] unsignup error:', error)
+        return false
+      }
+      toast.success('Désinscription confirmée')
+      return true
+    },
+    [user],
+  )
+
+  return { signUp, unsignUp, unsignUpMany }
 }

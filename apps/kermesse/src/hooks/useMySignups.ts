@@ -11,8 +11,10 @@ export interface MySignup {
   startTime: string
   endTime: string
   slotDate: string
+  standId: string
   standName: string
   standEmoji: string | null
+  eventId: string
   eventName: string
   eventDate: string
   eventEndDate: string
@@ -37,9 +39,15 @@ interface RawSignupRow {
     end_time: string
     date: string | null
     kermesse_stands: {
+      id: string
       name: string
       emoji: string | null
-      kermesse_events: { name: string; date: string; end_date: string } | null
+      kermesse_events: {
+        id: string
+        name: string
+        date: string
+        end_date: string
+      } | null
     } | null
   } | null
 }
@@ -65,8 +73,8 @@ export function useMySignups(userId: string | null): UseMySignupsResult {
          kermesse_slots (
            start_time, end_time, date,
            kermesse_stands (
-             name, emoji,
-             kermesse_events ( name, date, end_date )
+             id, name, emoji,
+             kermesse_events ( id, name, date, end_date )
            )
          )`,
       )
@@ -92,8 +100,10 @@ export function useMySignups(userId: string | null): UseMySignupsResult {
         startTime: slot?.start_time ?? '',
         endTime: slot?.end_time ?? '',
         slotDate: slot?.date ?? '',
+        standId: stand?.id ?? '',
         standName: stand?.name ?? 'Stand',
         standEmoji: stand?.emoji ?? null,
+        eventId: event?.id ?? '',
         eventName: event?.name ?? '',
         eventDate: event?.date ?? '',
         eventEndDate: event?.end_date ?? '',
