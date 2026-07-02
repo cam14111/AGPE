@@ -7,7 +7,9 @@ export CSV).
 
 - **Production** : <https://cam14111.github.io/AGPE/>
 - **Stack** : React + Vite + TypeScript · Tailwind CSS + shadcn/ui · Supabase
-  (Auth magic link + PostgreSQL + RLS) · déploiement GitHub Pages via GitHub Actions.
+  (Auth Google OAuth + PostgreSQL + RLS) · déploiement GitHub Pages via GitHub Actions.
+- **Exploitation** (sauvegardes, keepalive Supabase, rollback, advisors) :
+  voir [`docs/OPERATIONS.md`](docs/OPERATIONS.md).
 
 ---
 
@@ -22,9 +24,9 @@ AGPE/
 │   ├── auth/              AuthProvider + useAuth (session + rôle)
 │   └── types/supabase.ts  Types générés de la base
 ├── supabase/
-│   ├── migrations/        Schéma SQL idempotent (0001 → 0007)
+│   ├── migrations/        Schéma SQL idempotent (0001 → 0023)
 │   └── functions/         Edge Functions (stub notifications)
-└── .github/workflows/     Déploiement GitHub Pages
+└── .github/workflows/     Déploiement GitHub Pages + keepalive Supabase
 ```
 
 ---
@@ -62,7 +64,7 @@ pnpm --filter kermesse build    # → apps/kermesse/dist/
 ## Base de données Supabase
 
 Les migrations se trouvent dans `supabase/migrations/`, numérotées et **idempotentes**
-(ré-exécutables sans erreur). Les appliquer **dans l'ordre** (0001 → 0007).
+(ré-exécutables sans erreur). Les appliquer **dans l'ordre** (0001 → 0023).
 
 ### Avec la CLI Supabase (recommandé)
 
@@ -74,7 +76,7 @@ supabase db push
 
 ### Sans CLI (SQL Editor)
 
-Copier-coller le contenu de chaque fichier `0001` → `0007` dans l'éditeur SQL
+Copier-coller le contenu de chaque fichier `0001` → `0023` dans l'éditeur SQL
 Supabase, dans l'ordre, et exécuter.
 
 ### Générer les types TypeScript
@@ -112,8 +114,8 @@ pnpm supabase gen types typescript --project-id <project-id> \
 
 ## Authentification
 
-- **Magic link** par email (aucun mot de passe).
-- Le client utilise le flux **PKCE** : le lien revient avec `?code=…`
+- **Google OAuth** (aucun mot de passe à retenir).
+- Le client utilise le flux **PKCE** : le retour OAuth arrive avec `?code=…`
   (query string), compatible avec le `HashRouter` (`#/auth/callback`).
 - Au premier login avec `VITE_ADMIN_EMAIL`, l'utilisateur est promu **admin**
   automatiquement (fonction `kermesse_bootstrap_admin`, sans effet si un admin existe).
@@ -171,3 +173,4 @@ Détails complets dans `SETUP_CHECKLIST.md`.
 - `CODING_GUIDELINES.md` — conventions de code obligatoires
 - `UI_DESIGN_SPEC.md` — design system & composants
 - `SETUP_CHECKLIST.md` — checklist de configuration Supabase / GitHub
+- `docs/OPERATIONS.md` — exploitation : sauvegardes, keepalive Supabase, rollback, advisors
