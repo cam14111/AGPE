@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CheckCircle2, Pencil, Plus, Trash2 } from 'lucide-react'
+import { CheckCircle2, CircleOff, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useEvents } from '@/hooks/useEvents'
 import { useEventDaySchedules } from '@/hooks/useEventDaySchedules'
 import { EventForm } from '@/components/admin/EventForm'
@@ -26,12 +26,14 @@ export function Events() {
     updateEvent,
     deleteEvent,
     activateEvent,
+    deactivateEvent,
   } = useEvents()
 
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<EventRow | null>(null)
   const [toDelete, setToDelete] = useState<EventRow | null>(null)
   const [toActivate, setToActivate] = useState<EventRow | null>(null)
+  const [toDeactivate, setToDeactivate] = useState<EventRow | null>(null)
   const [postCreationEventId, setPostCreationEventId] = useState<string | null>(null)
   const [activateAskId, setActivateAskId] = useState<string | null>(null)
   // Ref pour accès synchrone à l'ID créé (les state updates sont async).
@@ -97,7 +99,16 @@ export function Events() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {!event.is_active && (
+                  {event.is_active ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setToDeactivate(event)}
+                    >
+                      <CircleOff className="h-4 w-4" />
+                      Désactiver
+                    </Button>
+                  ) : (
                     <Button
                       variant="outline"
                       size="sm"
@@ -212,6 +223,24 @@ export function Events() {
         ]}
         onOpenChange={(o) => {
           if (!o) setPostCreationEventId(null)
+        }}
+      />
+
+      <ConfirmDialog
+        open={toDeactivate !== null}
+        title="Désactiver cette édition ?"
+        description={
+          toDeactivate
+            ? `« ${toDeactivate.name} » ne sera plus visible par les bénévoles : plus aucune inscription possible jusqu'à l'activation d'une édition. Les inscriptions existantes sont conservées.`
+            : undefined
+        }
+        confirmLabel="Désactiver"
+        destructive
+        onConfirm={async () => {
+          if (toDeactivate) await deactivateEvent(toDeactivate.id)
+        }}
+        onOpenChange={(open) => {
+          if (!open) setToDeactivate(null)
         }}
       />
 

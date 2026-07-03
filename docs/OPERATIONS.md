@@ -143,9 +143,9 @@ idempotentes), ou récupérer le SQL exact d'une migration passée dans
 
 Dernier passage : 02/07/2026, après les migrations 0022/0023.
 
-### Sécurité — 6 avertissements `SECURITY DEFINER` : **intentionnels**
+### Sécurité — 7 avertissements `SECURITY DEFINER` : **intentionnels**
 
-Le linter signale que 6 fonctions `SECURITY DEFINER` sont exécutables par les
+Le linter signale que 7 fonctions `SECURITY DEFINER` sont exécutables par les
 utilisateurs connectés (`authenticated`). C'est **voulu et sûr** : chaque
 fonction est le point d'entrée officiel d'une opération qui doit contourner la
 RLS, et **s'auto-protège** en vérifiant elle-même l'identité/le rôle de
@@ -159,6 +159,7 @@ l'appelant :
 | `kermesse_admin_set_role(uuid, text)` | écrit les rôles | admin obligatoire + garde « toujours ≥ 1 admin » |
 | `kermesse_admin_signup_details(uuid)` | lit emails + profils de tous les bénévoles | `RAISE EXCEPTION` si l'appelant n'est pas admin |
 | `kermesse_slot_fill_rate()` | compte TOUTES les inscriptions (la RLS limiterait un bénévole aux siennes) | ne renvoie que des compteurs agrégés, aucune donnée personnelle |
+| `kermesse_admin_delete_member(uuid)` | supprime un compte dans `auth.users` (non accessible via l'API) | admin obligatoire + refuse soi-même et les administrateurs |
 
 Toutes ont `SET search_path = public` (pas de détournement de résolution de
 noms) et `EXECUTE` est révoqué pour `anon` (migration 0008). Les fonctions de

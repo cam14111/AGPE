@@ -370,6 +370,10 @@ export interface Database {
         Args: { p_user_id: string; p_role: 'admin' | 'volunteer' }
         Returns: undefined
       }
+      kermesse_admin_delete_member: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
       kermesse_admin_signup_details: {
         Args: { p_event_id: string }
         Returns: {

@@ -18,6 +18,7 @@ interface UseMembersResult {
   error: string | null
   refetch: () => void
   setRole: (userId: string, role: 'admin' | 'volunteer') => Promise<boolean>
+  deleteMember: (userId: string) => Promise<boolean>
 }
 
 // Liste des membres + actions de promotion / rétrogradation (admin uniquement).
@@ -78,7 +79,40 @@ export function useMembers(): UseMembersResult {
     [fetchMembers],
   )
 
+  // Suppression définitive d'un membre bénévole (compte + inscriptions).
+  // La fonction SQL refuse la suppression de soi-même et des administrateurs.
+  const deleteMember = useCallback(
+    async (userId: string): Promise<boolean> => {
+      const { error: err } = await supabase.rpc('kermesse_admin_delete_member', {
+        p_user_id: userId,
+      })
+      if (err) {
+        if (err.message.includes('propre compte')) {
+          toast.error('Vous ne pouvez pas supprimer votre propre compte.')
+        } else if (err.message.includes('rétrogradez')) {
+          toast.error('Rétrogradez d\'abord cet administrateur en bénévole.')
+        } else {
+          toast.error('Impossible de supprimer ce membre.')
+          console.error('[kermesse] deleteMember error:', err)
+        }
+        return false
+      }
+      toast.success('Membre supprimé.')
+      await fetchMembers()
+      return true
+    },
+    [fetchMembers],
+  )
+
   const adminCount = members.filter((m) => m.role === 'admin').length
 
-  return { members, adminCount, loading, error, refetch: fetchMembers, setRole }
+  return {
+    members,
+    adminCount,
+    loading,
+    error,
+    refetch: fetchMembers,
+    setRole,
+    deleteMember,
+  }
 }

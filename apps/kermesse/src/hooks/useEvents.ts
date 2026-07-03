@@ -16,6 +16,7 @@ interface UseEventsResult {
   ) => Promise<boolean>
   deleteEvent: (id: string) => Promise<boolean>
   activateEvent: (id: string) => Promise<boolean>
+  deactivateEvent: (id: string) => Promise<boolean>
 }
 
 // Gestion des événements (admin) : liste + CRUD + activation exclusive.
@@ -135,6 +136,26 @@ export function useEvents(): UseEventsResult {
     [fetchEvents],
   )
 
+  // Désactive l'édition active : plus aucun événement visible côté bénévoles
+  // (ils voient « Aucun événement n'est ouvert pour le moment »).
+  const deactivateEvent = useCallback(
+    async (id: string): Promise<boolean> => {
+      const { error: err } = await supabase
+        .from('kermesse_events')
+        .update({ is_active: false })
+        .eq('id', id)
+      if (err) {
+        toast.error('Impossible de désactiver cette édition.')
+        console.error('[kermesse] deactivateEvent error:', err)
+        return false
+      }
+      toast.success('Édition désactivée : les inscriptions sont fermées.')
+      await fetchEvents()
+      return true
+    },
+    [fetchEvents],
+  )
+
   return {
     events,
     loading,
@@ -144,5 +165,6 @@ export function useEvents(): UseEventsResult {
     updateEvent,
     deleteEvent,
     activateEvent,
+    deactivateEvent,
   }
 }

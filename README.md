@@ -24,7 +24,7 @@ AGPE/
 │   ├── auth/              AuthProvider + useAuth (session + rôle)
 │   └── types/supabase.ts  Types générés de la base
 ├── supabase/
-│   ├── migrations/        Schéma SQL idempotent (0001 → 0023)
+│   ├── migrations/        Schéma SQL idempotent (0001 → 0024)
 │   └── functions/         Edge Functions (stub notifications)
 └── .github/workflows/     Déploiement GitHub Pages + keepalive Supabase
 ```
@@ -64,7 +64,7 @@ pnpm --filter kermesse build    # → apps/kermesse/dist/
 ## Base de données Supabase
 
 Les migrations se trouvent dans `supabase/migrations/`, numérotées et **idempotentes**
-(ré-exécutables sans erreur). Les appliquer **dans l'ordre** (0001 → 0023).
+(ré-exécutables sans erreur). Les appliquer **dans l'ordre** (0001 → 0024).
 
 ### Avec la CLI Supabase (recommandé)
 
@@ -76,7 +76,7 @@ supabase db push
 
 ### Sans CLI (SQL Editor)
 
-Copier-coller le contenu de chaque fichier `0001` → `0023` dans l'éditeur SQL
+Copier-coller le contenu de chaque fichier `0001` → `0024` dans l'éditeur SQL
 Supabase, dans l'ordre, et exécuter.
 
 ### Générer les types TypeScript
@@ -109,6 +109,7 @@ pnpm supabase gen types typescript --project-id <project-id> \
 | `kermesse_admin_signup_details()` (RPC) | Détail des inscriptions (email + nom) — admins uniquement |
 | `kermesse_admin_list_members()` (RPC) | Liste des membres + rôle — admins uniquement |
 | `kermesse_admin_set_role()` (RPC) | Promotion/rétrogradation, garde « au moins 1 admin » — admins uniquement |
+| `kermesse_admin_delete_member()` (RPC) | Suppression d'un membre bénévole (compte + inscriptions) — admins uniquement |
 
 ---
 

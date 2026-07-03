@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ShieldCheck, ShieldMinus, ShieldPlus } from 'lucide-react'
+import { ShieldCheck, ShieldMinus, ShieldPlus, Trash2 } from 'lucide-react'
 import { useMembers, type Member } from '@/hooks/useMembers'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton'
@@ -20,8 +20,10 @@ function memberLabel(member: Member): string {
 }
 
 export function Roles() {
-  const { members, adminCount, loading, error, refetch, setRole } = useMembers()
+  const { members, adminCount, loading, error, refetch, setRole, deleteMember } =
+    useMembers()
   const [pending, setPending] = useState<PendingAction | null>(null)
+  const [toDelete, setToDelete] = useState<Member | null>(null)
 
   if (loading) return <LoadingSkeleton />
   if (error) return <ErrorMessage onRetry={refetch} />
@@ -30,7 +32,7 @@ export function Roles() {
     <div>
       <PageHeader
         title="Administrateurs"
-        description="Gérez qui peut administrer les événements. Il doit toujours rester au moins un administrateur."
+        description="Gérez les membres : promotion admin, rétrogradation, suppression. Il doit toujours rester au moins un administrateur."
       />
 
       {members.length === 0 ? (
@@ -99,6 +101,19 @@ export function Roles() {
                         Promouvoir admin
                       </Button>
                     )}
+
+                    {/* Suppression : bénévoles uniquement (un admin doit
+                        d'abord être rétrogradé — garde aussi appliquée en base). */}
+                    {!isAdmin && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setToDelete(member)}
+                        aria-label={`Supprimer ${memberLabel(member)}`}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-600" />
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -128,6 +143,24 @@ export function Roles() {
         }}
         onOpenChange={(open) => {
           if (!open) setPending(null)
+        }}
+      />
+
+      <ConfirmDialog
+        open={toDelete !== null}
+        title="Supprimer ce membre ?"
+        description={
+          toDelete
+            ? `Le compte de ${memberLabel(toDelete)} et toutes ses inscriptions seront supprimés définitivement (ses remplaçants éventuels seront promus automatiquement). L'historique d'activité conserve son nom. S'il se reconnecte avec Google, un nouveau compte vierge sera créé.`
+            : undefined
+        }
+        confirmLabel="Supprimer"
+        destructive
+        onConfirm={async () => {
+          if (toDelete) await deleteMember(toDelete.userId)
+        }}
+        onOpenChange={(open) => {
+          if (!open) setToDelete(null)
         }}
       />
     </div>
