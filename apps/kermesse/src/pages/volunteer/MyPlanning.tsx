@@ -74,13 +74,21 @@ export function MyPlanning() {
     ? sections.filter((s) => !isEventPast(s.eventEndDate))
     : sections
 
+  // Ne désinscrit que les créneaux du groupe pas encore terminés : la base
+  // refuse la suppression d'un créneau passé (migration 0023) et annulerait
+  // sinon toute la désinscription groupée (ex. groupe 10:00 → 12:00 dont on
+  // demande la désinscription à 11:30 : seul le créneau 11:00 → 12:00 est retiré).
   async function handleUnsubscribe(): Promise<void> {
     if (!toUnsubscribe) return
-    const { slotIds } = toUnsubscribe
+    const ids = new Set(toUnsubscribe.slotIds)
+    const upcoming = signups
+      .filter((s) => ids.has(s.slotId) && !isDateTimePast(s.slotDate, s.endTime))
+      .map((s) => s.slotId)
+    if (upcoming.length === 0) return
     const ok =
-      slotIds.length > 1
-        ? await unsignUpMany(slotIds)
-        : await unsignUp(slotIds[0]!)
+      upcoming.length > 1
+        ? await unsignUpMany(upcoming)
+        : await unsignUp(upcoming[0]!)
     if (ok) refetch()
   }
 

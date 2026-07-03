@@ -13,7 +13,9 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    /* Primaire — orange AGPE (~#DE6A12) */
+    /* Primaire — orange AGPE (~#DE6A12). Aussi codé en dur dans
+       index.html (theme-color) et public/manifest.webmanifest (theme_color) :
+       mettre à jour les trois ensemble. */
     --primary: 26 85% 47%;
     --primary-foreground: 0 0% 100%;
 

@@ -201,7 +201,28 @@ sauvegarde `backup_20260702` (copies figées, jamais requêtées).
 
 ---
 
-## 6. Limites des offres gratuites (vérifiées le 02/07/2026)
+## 6. Limites connues (choix assumés)
+
+- **Heure de référence** : la base juge un créneau « terminé » en heure de
+  Paris (migration 0023) ; l'interface, elle, utilise l'heure de l'appareil.
+  Pour un parent dont le téléphone n'est pas à l'heure de Paris (voyage,
+  horloge déréglée), le bouton « Se désinscrire » peut apparaître alors que la
+  base refusera (message clair affiché), ou disparaître un peu trop tôt. La
+  base reste l'autorité ; impact jugé négligeable pour une école française.
+- **Détection des erreurs métier côté client** : l'app reconnaît les refus de
+  la base par le texte de l'exception (« Créneau passé », « Chevauchement »).
+  Ces textes sont définis dans nos migrations : ne pas les reformuler sans
+  adapter `useSignups.ts`, sinon l'utilisateur verra le message générique.
+- **Prédicat admin répété dans les policies SQL** : chaque policy embarque son
+  propre `EXISTS (… role = 'admin')` (style du projet depuis 0002). C'est
+  volontaire : chaque policy reste autoportante et auditable ; une fonction
+  partagée ajouterait une indirection dans du code de sécurité et un
+  avertissement advisor de plus. En cas d'évolution du modèle de rôles,
+  penser à mettre à jour toutes les policies (rechercher `role = 'admin'`).
+
+---
+
+## 7. Limites des offres gratuites (vérifiées le 02/07/2026)
 
 - **Supabase Free** : 500 Mo de base (large : la base pèse < 20 Mo),
   50 000 utilisateurs actifs/mois, 5 Go d'egress, **max 2 projets actifs**

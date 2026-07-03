@@ -1,8 +1,24 @@
 import { useCallback } from 'react'
 import { toast } from 'sonner'
+import type { PostgrestError } from '@supabase/supabase-js'
 import { supabase } from '@agpe/shared/supabase-client'
 import { useAuth } from '@agpe/shared/auth/useAuth'
 import type { SignupStatus } from '@/lib/domain'
+
+// Message lisible pour une erreur de désinscription. « Créneau passé » est
+// levé par le trigger de la migration 0023 (créneau terminé, sauf admin).
+function notifyUnsignupError(error: PostgrestError, plural: boolean): void {
+  if (error.message.includes('Créneau passé')) {
+    toast.error(
+      plural
+        ? 'Un de ces créneaux est terminé : la désinscription n\'est plus possible. Contactez un organisateur si besoin.'
+        : 'Ce créneau est terminé : la désinscription n\'est plus possible. Contactez un organisateur si besoin.',
+    )
+  } else {
+    toast.error('Impossible de se désinscrire. Réessayez dans quelques instants.')
+    console.error('[kermesse] unsignup error:', error)
+  }
+}
 
 interface UseSignupsResult {
   signUp: (slotId: string) => Promise<SignupStatus | null>
@@ -60,14 +76,7 @@ export function useSignups(): UseSignupsResult {
         .eq('user_id', user.id)
 
       if (error) {
-        if (error.message.includes('Créneau passé')) {
-          toast.error(
-            'Ce créneau est terminé : la désinscription n\'est plus possible. Contactez un organisateur si besoin.',
-          )
-        } else {
-          toast.error('Impossible de se désinscrire. Réessayez dans quelques instants.')
-          console.error('[kermesse] unsignup error:', error)
-        }
+        notifyUnsignupError(error, false)
         return false
       }
       toast.success('Désinscription confirmée')
@@ -89,14 +98,7 @@ export function useSignups(): UseSignupsResult {
         .eq('user_id', user.id)
 
       if (error) {
-        if (error.message.includes('Créneau passé')) {
-          toast.error(
-            'Un de ces créneaux est terminé : la désinscription n\'est plus possible. Contactez un organisateur si besoin.',
-          )
-        } else {
-          toast.error('Impossible de se désinscrire. Réessayez dans quelques instants.')
-          console.error('[kermesse] unsignup error:', error)
-        }
+        notifyUnsignupError(error, true)
         return false
       }
       toast.success('Désinscription confirmée')
