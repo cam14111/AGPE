@@ -1,3 +1,4 @@
+import { Suspense, lazy } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from '@agpe/shared/auth/useAuth'
 import { RoleGuard } from '@/lib/role-guard'
@@ -7,15 +8,32 @@ import { VolunteerLayout } from '@/components/layout/VolunteerLayout'
 import { Login } from '@/pages/auth/Login'
 import { Callback } from '@/pages/auth/Callback'
 import { Profile } from '@/pages/Profile'
-import { Dashboard } from '@/pages/admin/Dashboard'
-import { Supervision } from '@/pages/admin/Supervision'
-import { Events } from '@/pages/admin/Events'
-import { Stands } from '@/pages/admin/Stands'
-import { Slots } from '@/pages/admin/Slots'
-import { Roles } from '@/pages/admin/Roles'
-import { History } from '@/pages/admin/History'
 import { StandsList } from '@/pages/volunteer/StandsList'
 import { MyPlanning } from '@/pages/volunteer/MyPlanning'
+
+// Pages admin chargées à la demande : les bénévoles (l'immense majorité des
+// visites, souvent sur mobile) ne téléchargent pas le code d'administration.
+const Dashboard = lazy(() =>
+  import('@/pages/admin/Dashboard').then((m) => ({ default: m.Dashboard })),
+)
+const Supervision = lazy(() =>
+  import('@/pages/admin/Supervision').then((m) => ({ default: m.Supervision })),
+)
+const Events = lazy(() =>
+  import('@/pages/admin/Events').then((m) => ({ default: m.Events })),
+)
+const Stands = lazy(() =>
+  import('@/pages/admin/Stands').then((m) => ({ default: m.Stands })),
+)
+const Slots = lazy(() =>
+  import('@/pages/admin/Slots').then((m) => ({ default: m.Slots })),
+)
+const Roles = lazy(() =>
+  import('@/pages/admin/Roles').then((m) => ({ default: m.Roles })),
+)
+const History = lazy(() =>
+  import('@/pages/admin/History').then((m) => ({ default: m.History })),
+)
 
 // Redirige la racine selon l'état d'authentification et le rôle.
 function RootRedirect() {
@@ -66,6 +84,13 @@ function LoginRoute() {
 
 export function AppRoutes() {
   return (
+    <Suspense
+      fallback={
+        <div className="mx-auto max-w-2xl p-4">
+          <LoadingSkeleton />
+        </div>
+      }
+    >
     <Routes>
       <Route path="/" element={<RootRedirect />} />
       <Route path="/login" element={<LoginRoute />} />
@@ -119,5 +144,6 @@ export function AppRoutes() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </Suspense>
   )
 }

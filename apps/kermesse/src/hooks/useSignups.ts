@@ -60,8 +60,14 @@ export function useSignups(): UseSignupsResult {
         .eq('user_id', user.id)
 
       if (error) {
-        toast.error('Impossible de se désinscrire. Réessayez dans quelques instants.')
-        console.error('[kermesse] unsignup error:', error)
+        if (error.message.includes('Créneau passé')) {
+          toast.error(
+            'Ce créneau est terminé : la désinscription n\'est plus possible. Contactez un organisateur si besoin.',
+          )
+        } else {
+          toast.error('Impossible de se désinscrire. Réessayez dans quelques instants.')
+          console.error('[kermesse] unsignup error:', error)
+        }
         return false
       }
       toast.success('Désinscription confirmée')
@@ -83,8 +89,14 @@ export function useSignups(): UseSignupsResult {
         .eq('user_id', user.id)
 
       if (error) {
-        toast.error('Impossible de se désinscrire. Réessayez dans quelques instants.')
-        console.error('[kermesse] unsignup error:', error)
+        if (error.message.includes('Créneau passé')) {
+          toast.error(
+            'Un de ces créneaux est terminé : la désinscription n\'est plus possible. Contactez un organisateur si besoin.',
+          )
+        } else {
+          toast.error('Impossible de se désinscrire. Réessayez dans quelques instants.')
+          console.error('[kermesse] unsignup error:', error)
+        }
         return false
       }
       toast.success('Désinscription confirmée')

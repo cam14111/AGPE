@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { SlotBadge } from '@/components/volunteer/SlotBadge'
-import { formatTime, formatDayShort } from '@/lib/date-utils'
+import { formatTime, formatDayShort, isDateTimePast } from '@/lib/date-utils'
 import type { SignupStatus, SlotRow as SlotRowType } from '@/lib/domain'
 
 interface SlotRowProps {
@@ -32,6 +32,11 @@ export function SlotRow({
   const [loading, setLoading] = useState(false)
   const isSignedUp = myStatus !== undefined
   const isFull = currentCount >= slot.max_volunteers
+  // Un créneau déjà terminé (événement multi-jours en cours) se comporte comme
+  // un créneau d'événement passé : plus d'inscription ni de désinscription
+  // (règle également appliquée en base par la migration 0023).
+  const isPast =
+    isPastEvent || (slot.date !== null && isDateTimePast(slot.date, slot.end_time))
 
   async function handleClick(): Promise<void> {
     setLoading(true)
@@ -79,8 +84,8 @@ export function SlotRow({
       </div>
 
       {isSignedUp ? (
-        // Masqué (pas seulement désactivé) après la date de l'événement.
-        !isPastEvent && (
+        // Masqué (pas seulement désactivé) une fois le créneau terminé.
+        !isPast && (
           <Button
             variant="outline"
             className="w-full sm:w-auto"
@@ -91,16 +96,18 @@ export function SlotRow({
             {loading ? 'Désinscription…' : 'Se désinscrire'}
           </Button>
         )
-      ) : overlaps && !isPastEvent ? (
+      ) : overlaps && !isPast ? (
         <span className="text-xs text-slate-400 sm:text-right">
           Chevauche un de vos créneaux
         </span>
+      ) : isPast ? (
+        <span className="text-xs text-slate-400 sm:text-right">Terminé</span>
       ) : (
         <Button
           className="w-full sm:w-auto"
           variant={isFull ? 'outline' : 'default'}
           onClick={() => void handleClick()}
-          disabled={loading || isPastEvent}
+          disabled={loading}
           aria-busy={loading}
         >
           {loading
@@ -111,7 +118,7 @@ export function SlotRow({
         </Button>
       )}
 
-      {isSignedUp && isPastEvent && (
+      {isSignedUp && isPast && (
         <span className="text-xs font-medium text-emerald-600">
           {myStatus === 'replacement' ? 'Remplaçant' : 'Inscrit ✓'}
         </span>

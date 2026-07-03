@@ -1,0 +1,19 @@
+{
+  "name": "Événements AGPE",
+  "short_name": "AGPE",
+  "description": "Inscriptions bénévoles aux événements de l'AGPE",
+  "lang": "fr",
+  "start_url": "/AGPE/",
+  "scope": "/AGPE/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#DE6A12",
+  "icons": [
+    {
+      "src": "logo-agpe-icon.png",
+      "sizes": "121x126",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

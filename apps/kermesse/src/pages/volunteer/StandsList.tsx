@@ -4,6 +4,7 @@ import { useStands } from '@/hooks/useStands'
 import { useFillRates } from '@/hooks/useFillRates'
 import { useMySignups } from '@/hooks/useMySignups'
 import { useSignups } from '@/hooks/useSignups'
+import { useRefetchOnFocus } from '@/hooks/useRefetchOnFocus'
 import { StandCard } from '@/components/volunteer/StandCard'
 import { LoadingSkeleton } from '@/components/shared/LoadingSkeleton'
 import { ErrorMessage } from '@/components/shared/ErrorMessage'
@@ -29,6 +30,13 @@ export function StandsList() {
     refetch: refetchMySignups,
   } = useMySignups(user?.id ?? null)
   const { signUp, unsignUp } = useSignups()
+
+  // Retour sur l'onglet après une absence : les places restantes affichées
+  // peuvent être périmées, on les rafraîchit.
+  useRefetchOnFocus(() => {
+    refetchFillRates()
+    refetchMySignups()
+  })
 
   // Un créneau chevauche-t-il un autre créneau déjà choisi par l'utilisateur ?
   function overlapsSlot(slot: SlotRow): boolean {

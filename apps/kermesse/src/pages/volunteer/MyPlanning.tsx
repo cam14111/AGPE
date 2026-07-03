@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useAuth } from '@agpe/shared/auth/useAuth'
 import { useMySignups } from '@/hooks/useMySignups'
 import { useSignups } from '@/hooks/useSignups'
+import { useRefetchOnFocus } from '@/hooks/useRefetchOnFocus'
 import { useActiveEvent } from '@/hooks/useActiveEvent'
 import {
   groupConsecutiveSignups,
@@ -38,6 +39,9 @@ export function MyPlanning() {
   const { event: activeEvent } = useActiveEvent()
   const [toUnsubscribe, setToUnsubscribe] = useState<PlanningGroup | null>(null)
   const [hidePastEvents, setHidePastEvents] = useState(true)
+
+  // Retour sur l'onglet après une absence : resynchronise le planning.
+  useRefetchOnFocus(refetch)
 
   // Regroupe les créneaux consécutifs, puis range les groupes par événement
   // (les groupes sont déjà triés chronologiquement par groupConsecutiveSignups).
