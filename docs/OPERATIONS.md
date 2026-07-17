@@ -17,9 +17,12 @@ qui échoue.
 ### Prévention automatique
 
 Le workflow [`supabase-keepalive.yml`](../.github/workflows/supabase-keepalive.yml)
-envoie une requête anodine à l'API REST **deux fois par semaine** (lundi et
-jeudi, 06:47 UTC). La requête utilise la clé publique `anon` et ne renvoie
-aucune donnée (RLS) — elle compte simplement comme de l'activité API.
+envoie une requête anodine à l'API REST **une fois par jour** (06:47 UTC).
+La requête utilise la clé publique `anon` et ne renvoie aucune donnée (RLS) —
+elle compte simplement comme de l'activité API. La doc Supabase précise que la
+pause vise les projets à « activité faible » sur 7 jours et que « quelques
+requêtes par jour » suffisent typiquement : le rythme quotidien se place dans
+cette zone.
 
 Deux limites à connaître :
 
