@@ -48,3 +48,7 @@ CREATE POLICY kermesse_slots_write_admin
   ON kermesse_slots FOR ALL TO authenticated
   USING (EXISTS (SELECT 1 FROM kermesse_user_roles WHERE user_id = auth.uid() AND role = 'admin'))
   WITH CHECK (EXISTS (SELECT 1 FROM kermesse_user_roles WHERE user_id = auth.uid() AND role = 'admin'));
+
+-- Accès Data API explicites : les politiques RLS ci-dessus restent applicables.
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.kermesse_stands, public.kermesse_slots
+TO authenticated, service_role;

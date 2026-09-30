@@ -167,3 +167,7 @@ $$;
 REVOKE EXECUTE ON FUNCTION kermesse_person_name(UUID) FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION kermesse_log_audit(TEXT, UUID, UUID, TEXT, UUID) FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION kermesse_audit_signup_insert() FROM PUBLIC, anon, authenticated;
+
+-- Accès Data API explicites : les politiques RLS ci-dessus restent applicables.
+GRANT SELECT, DELETE ON TABLE public.kermesse_signup_audit TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.kermesse_signup_audit TO service_role;

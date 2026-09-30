@@ -31,3 +31,7 @@ DROP POLICY IF EXISTS agpe_profile_update_own ON agpe_users_profile;
 CREATE POLICY agpe_profile_update_own
   ON agpe_users_profile FOR UPDATE
   USING (auth.uid() = user_id);
+
+-- Accès Data API explicites : les politiques RLS ci-dessus restent applicables.
+GRANT SELECT, INSERT, UPDATE ON TABLE public.agpe_users_profile TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.agpe_users_profile TO service_role;

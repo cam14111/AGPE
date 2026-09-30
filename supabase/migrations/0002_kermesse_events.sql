@@ -64,3 +64,10 @@ CREATE POLICY kermesse_events_delete_admin
     EXISTS (SELECT 1 FROM kermesse_user_roles
             WHERE user_id = auth.uid() AND role = 'admin')
   );
+
+-- Accès Data API explicites : les politiques RLS ci-dessus restent applicables.
+ALTER TABLE public.kermesse_user_roles ENABLE ROW LEVEL SECURITY;
+GRANT SELECT ON TABLE public.kermesse_user_roles TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.kermesse_user_roles TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.kermesse_events
+TO authenticated, service_role;
