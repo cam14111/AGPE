@@ -37,3 +37,7 @@ CREATE POLICY kermesse_signups_delete
     auth.uid() = user_id
     OR EXISTS (SELECT 1 FROM kermesse_user_roles WHERE user_id = auth.uid() AND role = 'admin')
   );
+
+-- Accès Data API explicites : les politiques RLS ci-dessus restent applicables.
+GRANT SELECT, INSERT, DELETE ON TABLE public.kermesse_signups TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.kermesse_signups TO service_role;

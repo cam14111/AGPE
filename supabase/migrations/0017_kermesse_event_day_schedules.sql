@@ -39,3 +39,7 @@ CREATE POLICY kermesse_day_schedules_write_admin
     EXISTS (SELECT 1 FROM kermesse_user_roles
             WHERE user_id = auth.uid() AND role = 'admin')
   );
+
+-- Accès Data API explicites : les politiques RLS ci-dessus restent applicables.
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.kermesse_event_day_schedules
+TO authenticated, service_role;

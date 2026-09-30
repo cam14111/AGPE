@@ -66,6 +66,8 @@ pnpm --filter kermesse build    # → apps/kermesse/dist/
 Les migrations se trouvent dans `supabase/migrations/`, numérotées et **idempotentes**
 (ré-exécutables sans erreur). Les appliquer **dans l'ordre** (0001 → 0024).
 
+Chaque migration qui crée une table dans `public` doit aussi définir ses `GRANT` Data API pour les rôles nécessaires, activer RLS et ajouter les policies correspondantes. Vérifier les migrations avec `supabase db reset` avant fusion ; ne pas accorder automatiquement tous les droits à `anon`.
+
 ### Avec la CLI Supabase (recommandé)
 
 ```bash

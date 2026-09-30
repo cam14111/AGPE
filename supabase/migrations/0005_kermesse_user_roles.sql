@@ -18,3 +18,7 @@ DROP POLICY IF EXISTS kermesse_roles_select_own ON kermesse_user_roles;
 CREATE POLICY kermesse_roles_select_own
   ON kermesse_user_roles FOR SELECT TO authenticated
   USING (auth.uid() = user_id);
+
+-- Accès Data API explicites : les politiques RLS ci-dessus restent applicables.
+GRANT SELECT ON TABLE public.kermesse_user_roles TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.kermesse_user_roles TO service_role;
